@@ -9,9 +9,9 @@ wheel.packages = ["src"]
 wheel.expand-macos-universal-tags = true
 
 [project]
-name = "lz_cpp"
+name = "hlz"
 version = "0.1.0"
-description = "C++ implementation of LZ compression with Python bindings"
+description = "Hierarchical LZ compression implementation with Python bindings"
 authors = [
     {name = "Ashok Cutkosky", email = "ashok@cutkosky.com"}
 ]

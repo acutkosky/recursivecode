@@ -1,0 +1,72 @@
+this is some awesome test here, I am really quite amazed. 
+In particular, we are going to get some reasonable compression 
+even though our encoding vocab size is only one more than the input vocab size!
+Of course, this is not impossible because our encoding is context-dependent!
+Even more amazingly would be if we could compress *twice* and get some reasonable compression!
+That would indeed be the holy grial. I'm not sure if it will happen with this text, but we will try!
+
+The art of data compression has fascinated computer scientists for decades. 
+From the early days of Huffman coding to modern algorithms like LZ77 and LZ78, 
+the quest for efficient compression has driven innovation in computer science.
+What makes this particularly interesting is how we can achieve compression even with 
+minimal vocabulary expansion. The hierarchical approach we're testing here takes 
+advantage of context-dependent encoding, allowing us to represent longer sequences 
+with fewer tokens. This is especially powerful when dealing with natural language, 
+where patterns and repetitions emerge at multiple levels of abstraction.
+
+Consider how human language itself is a form of compression - we use words to 
+represent complex concepts, and these words can be combined in countless ways 
+to express even more complex ideas. Our hierarchical encoder attempts to mimic 
+this process, learning patterns at different levels of context. The beauty of 
+this approach is that it can adapt to the specific characteristics of the input 
+data, whether it's natural language, code, or any other form of structured information.
+
+The real test of our compression algorithm lies in its ability to handle 
+longer texts while maintaining efficiency. By using a vocabulary size that's 
+only slightly larger than the input vocabulary, we're pushing the boundaries 
+of what's possible with context-dependent encoding. This is particularly 
+challenging because we need to balance the trade-off between compression ratio 
+and the ability to represent all possible input sequences.
+
+Let's explore the fascinating world of data compression further. When we look at 
+natural language, we notice that certain patterns appear frequently. For example, 
+common word pairs like "data compression" or "encoding algorithm" appear multiple 
+times in this text. Our hierarchical encoder should be able to recognize these 
+patterns and represent them more efficiently. The beauty of this approach is that 
+it can learn these patterns automatically, without needing explicit rules or 
+predefined dictionaries.
+
+The hierarchical nature of our compression algorithm is particularly interesting 
+because it mirrors how human language works. We don't just use individual words; 
+we combine them into phrases, sentences, and paragraphs. Each level of combination 
+creates new patterns that can be compressed further. This is why context-dependent 
+encoding is so powerful - it can capture these hierarchical relationships and 
+use them to achieve better compression ratios.
+
+In the realm of data compression, we often talk about the trade-off between 
+compression ratio and speed. Some algorithms focus on achieving the highest 
+possible compression, while others prioritize speed. Our hierarchical approach 
+attempts to find a sweet spot between these two goals. By using a minimal 
+vocabulary expansion, we keep the encoding process relatively simple while 
+still achieving good compression through context-dependent patterns.
+
+The concept of context-dependent encoding is not new, but our implementation 
+takes it to an interesting extreme. By limiting the vocabulary size to just 
+one more than the input vocabulary, we're forcing the algorithm to be very 
+efficient in how it uses its limited resources. This constraint actually helps 
+us discover more creative ways to represent patterns in the data.
+
+When we look at the history of compression algorithms, we see a clear evolution 
+from simple statistical methods to more sophisticated context-aware approaches. 
+The LZ family of algorithms, which our implementation is based on, represents 
+a significant step forward in this evolution. By considering the context of 
+each symbol, these algorithms can achieve much better compression ratios than 
+their predecessors.
+
+The hierarchical approach we're testing here takes this concept even further. 
+Instead of just considering the immediate context, we're building multiple 
+levels of context awareness. This allows us to capture patterns that span 
+different levels of abstraction, from individual characters to entire phrases. 
+The result is a compression algorithm that can adapt to the specific 
+characteristics of the input data, whether it's natural language, code, 
+or any other form of structured information. 

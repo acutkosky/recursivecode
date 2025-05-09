@@ -139,7 +139,7 @@ class LZCoder(Coder):
 
 
 
-class HierachicalLZCoder(Coder):
+class HierarchicalLZCoder(Coder):
     vocab_size: int
     coders: Dict[TOKEN_TYPE, LZCoder]
 
@@ -235,9 +235,5 @@ class HierachicalLZCoder(Coder):
 
 
 
-        
 
-
-
-
-__all__ = ["LZCoder", "HierachicalLZCoder"]
+__all__ = ["LZCoder", "HierarchicalLZCoder"]

@@ -1,11 +1,16 @@
 import pytest
 import math
+import importlib.util
 
-# Import directly from the Python implementation
-from src.lz import LZCoder, HierarchicalLZCoder, ensure_list, EMPTY_TOKEN
+# Check if the C++ module is available
+if importlib.util.find_spec("lz_cpp") is None:
+    pytest.skip("lz_cpp module not found. Skipping C++ implementation tests.", allow_module_level=True)
+
+# Import directly from the C++ implementation
+from lz_cpp import LZCoder, HierarchicalLZCoder, ensure_list, EMPTY_TOKEN
 
 # Apply pytest marker
-pytestmark = pytest.mark.python
+pytestmark = pytest.mark.cpp
 
 def test_basic_encode_decode():
     # Test with a simple string
@@ -96,7 +101,7 @@ def test_ensure_list():
     assert list_output == [1, 2, 3]
     
     # Test invalid input
-    with pytest.raises(ValueError):
+    with pytest.raises(RuntimeError):  # C++ throws runtime_error instead of ValueError
         ensure_list(123)  # int is not a valid input type 
 
 def test_hierarchical_basic_encode():
@@ -222,6 +227,4 @@ def test_hierarchical_encode_repeated_compression():
 
 
 if __name__ == "__main__":
-    pytest.main(["-xvs", __file__])
-
-
+    pytest.main(["-xvs", __file__]) 

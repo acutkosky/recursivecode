@@ -321,11 +321,20 @@ TokenSequence BPE::decode(const TokenSequence& tokens) {
  * Calculate statistics about token sequences in different contexts
  */
 std::unordered_map<TokenType, std::unordered_map<TokenType, std::unordered_map<TokenTuple, int, TokenTupleHash, TokenTupleEquals>>> 
-get_context_stats(const TokenSequence& tokens, const VocabSet& vocab) {
+get_context_stats(const TokenSequence& tokens, const VocabSet& vocab, bool debug) {
+    if (debug) {
+        std::cout << "get_context_stats - Starting analysis of " << tokens.size() 
+                  << " tokens with vocabulary size " << vocab.size() << std::endl;
+    }
+    
     // Initialize stats dictionary - for each context and each token, store a map of substrings to counts
     std::unordered_map<TokenType, std::unordered_map<TokenType, std::unordered_map<TokenTuple, int, TokenTupleHash, TokenTupleEquals>>> stats;
     
     // Initialize stats for each context and token pair
+    if (debug) {
+        std::cout << "get_context_stats - Initializing data structures..." << std::endl;
+    }
+    
     for (const auto& context : vocab) {
         stats[context] = std::unordered_map<TokenType, std::unordered_map<TokenTuple, int, TokenTupleHash, TokenTupleEquals>>();
         for (const auto& token : vocab) {
@@ -338,6 +347,13 @@ get_context_stats(const TokenSequence& tokens, const VocabSet& vocab) {
     for (const auto& v : vocab) {
         start_idx[v] = -1;
     }
+    
+    if (debug) {
+        std::cout << "get_context_stats - Processing token sequence..." << std::endl;
+    }
+    
+    // For tracking progress in debug mode
+    size_t last_progress = 0;
     
     // Process each token in the sequence
     for (size_t idx = 0; idx < tokens.size(); ++idx) {
@@ -355,6 +371,31 @@ get_context_stats(const TokenSequence& tokens, const VocabSet& vocab) {
         
         // Restart string finder for current token
         start_idx[token] = idx;
+        
+        // Print progress if in debug mode
+        if (debug && (idx * 100 / tokens.size() > last_progress || idx == tokens.size() - 1)) {
+            last_progress = idx * 100 / tokens.size();
+            std::cout << "get_context_stats - Progress: " << last_progress << "% (" 
+                      << idx + 1 << "/" << tokens.size() << " tokens)" << std::endl;
+        }
+    }
+    
+    if (debug) {
+        // Count total number of context-token pairs with statistics
+        size_t context_pairs = 0;
+        size_t total_substrings = 0;
+        
+        for (const auto& [context, token_map] : stats) {
+            for (const auto& [token, substring_map] : token_map) {
+                if (!substring_map.empty()) {
+                    context_pairs++;
+                    total_substrings += substring_map.size();
+                }
+            }
+        }
+        
+        std::cout << "get_context_stats - Finished with statistics for " << context_pairs 
+                  << " context-token pairs and " << total_substrings << " unique substrings" << std::endl;
     }
     
     return stats;
@@ -364,7 +405,11 @@ get_context_stats(const TokenSequence& tokens, const VocabSet& vocab) {
  * Learn a contextual tokenizer from input tokens
  */
 std::unordered_map<TokenType, std::unordered_map<TokenType, TokenTuple>> 
-learn_contextual_tokenizer(const TokenSequence& tokens, const std::optional<VocabSet>& vocab_opt) {
+learn_contextual_tokenizer(const TokenSequence& tokens, const std::optional<VocabSet>& vocab_opt, bool debug) {
+    if (debug) {
+        std::cout << "learn_contextual_tokenizer - Starting with " << tokens.size() << " input tokens" << std::endl;
+    }
+    
     // Initialize vocabulary if not provided
     VocabSet vocab;
     if (vocab_opt.has_value()) {
@@ -373,8 +418,19 @@ learn_contextual_tokenizer(const TokenSequence& tokens, const std::optional<Voca
         vocab = VocabSet(tokens.begin(), tokens.end());
     }
     
+    if (debug) {
+        std::cout << "learn_contextual_tokenizer - Initialized vocabulary with " << vocab.size() << " tokens" << std::endl;
+    }
+    
     // Get context statistics
-    auto contextual_token_counts = get_context_stats(tokens, vocab);
+    if (debug) {
+        std::cout << "learn_contextual_tokenizer - Computing context statistics..." << std::endl;
+    }
+    auto contextual_token_counts = get_context_stats(tokens, vocab, debug);
+    
+    if (debug) {
+        std::cout << "learn_contextual_tokenizer - Gathered statistics for " << contextual_token_counts.size() << " contexts" << std::endl;
+    }
     
     // Initialize contextual_tokens with empty string context
     std::unordered_map<TokenType, std::unordered_map<TokenType, TokenTuple>> contextual_tokens;
@@ -386,9 +442,25 @@ learn_contextual_tokenizer(const TokenSequence& tokens, const std::optional<Voca
         contextual_tokens[v][0] = TokenTuple();  // Empty string
     }
     
+    if (debug) {
+        std::cout << "learn_contextual_tokenizer - Processing contexts and end tokens..." << std::endl;
+    }
+    
+    // For debug progress tracking
+    int processed = 0;
+    size_t total_pairs = vocab.size() * vocab.size();
+    
     // Process each context and end token
     for (const auto& context : vocab) {
         for (const auto& end_token : vocab) {
+            // if (debug) {
+            //     processed++;
+            //     if (processed % 100 == 0 || processed == static_cast<int>(total_pairs)) {
+            //         std::cout << "learn_contextual_tokenizer - Processed " << processed << " of " 
+            //                   << total_pairs << " context-token pairs" << std::endl;
+            //     }
+            // }
+            
             if (end_token == 0) {
                 // The empty token must always mean the empty string
                 continue;
@@ -419,7 +491,50 @@ learn_contextual_tokenizer(const TokenSequence& tokens, const std::optional<Voca
         contextual_tokens[0][v] = singleton;
     }
     
+    if (debug) {
+        std::cout << "learn_contextual_tokenizer - Finished processing with " 
+                  << contextual_tokens.size() << " unique contexts" << std::endl;
+    }
+    
     return contextual_tokens;
+}
+
+/* 
+ * function that prints out the contents of a contextual_tokens map
+*/
+void print_contextual_tokens(const std::unordered_map<TokenType, std::unordered_map<TokenType, TokenTuple>>& contextual_tokens) {
+    for (const auto& [context, token_map] : contextual_tokens) {
+        std::cout << "Context: " << context << std::endl;
+        for (const auto& [token, value] : token_map) {
+            std::cout << "Token: " << token << " -> [";
+            for (size_t i = 0; i < value.size(); ++i) {
+                if (i > 0) std::cout << ", ";
+                std::cout << value[i];
+            }
+            std::cout << "]" << std::endl;
+        }
+    }
+}
+
+/*
+ * function that prints out the contextual tokens for a specific context
+*/
+void print_contextual_tokens_for_context(const std::unordered_map<TokenType, std::unordered_map<TokenType, TokenTuple>>& contextual_tokens, TokenType context) {
+    auto it = contextual_tokens.find(context);
+    if (it == contextual_tokens.end()) {
+        std::cout << "Context " << context << " not found in contextual tokens map" << std::endl;
+        return;
+    }
+    
+    std::cout << "Context: " << context << std::endl;
+    for (const auto& [token, value] : it->second) {
+        std::cout << "Token: " << token << " -> [";
+        for (size_t i = 0; i < value.size(); ++i) {
+            if (i > 0) std::cout << ", ";
+            std::cout << value[i];
+        }
+        std::cout << "]" << std::endl;
+    }
 }
 
 /**
@@ -427,7 +542,12 @@ learn_contextual_tokenizer(const TokenSequence& tokens, const std::optional<Voca
  */
 TokenSequence contextual_encode(
     const TokenSequence& tokens, 
-    const std::unordered_map<TokenType, std::unordered_map<TokenType, TokenTuple>>& contextual_tokens) {
+    const std::unordered_map<TokenType, std::unordered_map<TokenType, TokenTuple>>& contextual_tokens,
+    bool debug) {
+    
+    if (debug) {
+        std::cout << "contextual_encode - Starting encoding of " << tokens.size() << " tokens" << std::endl;
+    }
     
     // Start with empty context
     TokenSequence encoded;
@@ -451,10 +571,30 @@ TokenSequence contextual_encode(
                 }
             }
         }
+
+        // if (best_match == 0) {
+        //     std::cout << "No match found for context " << context << " and token " << tokens[cur_idx] << " at index " << cur_idx << std::endl;
+        //     print_contextual_tokens_for_context(contextual_tokens, context);
+        // }
+        
+        if (debug && best_match == 0) {
+            std::cout << "contextual_encode - Warning: No match found for context " << context 
+                      << " at index " << cur_idx << std::endl;
+        }
         
         encoded.push_back(best_match);
         context = best_match;
         cur_idx += best_value.size();
+        
+        if (debug && (cur_idx % 1000 == 0 || cur_idx == tokens.size())) {
+            std::cout << "contextual_encode - Processed " << cur_idx << " of " << tokens.size() 
+                      << " tokens (" << (cur_idx * 100 / tokens.size()) << "%)" << std::endl;
+        }
+    }
+    
+    if (debug) {
+        std::cout << "contextual_encode - Finished encoding, produced " << encoded.size() 
+                  << " tokens from " << tokens.size() << " input tokens" << std::endl;
     }
     
     return encoded;
@@ -466,12 +606,19 @@ TokenSequence contextual_encode(
 TokenSequence contextual_decode(
     const TokenSequence& tokens, 
     const std::unordered_map<TokenType, std::unordered_map<TokenType, TokenTuple>>& contextual_tokens,
-    TokenType initial_context) {
+    TokenType initial_context,
+    bool debug) {
+    
+    if (debug) {
+        std::cout << "contextual_decode - Starting decoding of " << tokens.size() << " tokens" << std::endl;
+    }
     
     TokenSequence decoded;
     TokenType context = initial_context;
     
-    for (const auto& token : tokens) {
+    for (size_t i = 0; i < tokens.size(); ++i) {
+        const auto& token = tokens[i];
+        
         // Get the token value for this context and token
         const auto& token_value = contextual_tokens.at(context).at(token);
         
@@ -480,6 +627,16 @@ TokenSequence contextual_decode(
         
         // Update context
         context = token;
+        
+        if (debug && (i % 1000 == 0 || i == tokens.size() - 1)) {
+            std::cout << "contextual_decode - Processed " << (i + 1) << " of " << tokens.size() 
+                      << " tokens (" << ((i + 1) * 100 / tokens.size()) << "%)" << std::endl;
+        }
+    }
+    
+    if (debug) {
+        std::cout << "contextual_decode - Finished decoding, produced " << decoded.size() 
+                  << " tokens from " << tokens.size() << " input tokens" << std::endl;
     }
     
     return decoded;
@@ -498,7 +655,7 @@ void ContextualEncoder::learn(const TokenSequence& tokens,
     }
     
     // Learn contextual tokenizer
-    context_map_ = learn_contextual_tokenizer(tokens, input_vocab);
+    context_map_ = learn_contextual_tokenizer(tokens, input_vocab, debug);
     input_vocab_ = VocabSet();
     output_vocab_ = VocabSet();
     
@@ -520,13 +677,23 @@ void ContextualEncoder::learn(const TokenSequence& tokens,
 }
 
 TokenSequence ContextualEncoder::encode(const TokenSequence& tokens) {
-    // Stub implementation that will be filled in later
-    return contextual_encode(tokens, context_map_);
+    // Add debug=false parameter to match the updated contextual_encode function
+    return contextual_encode(tokens, context_map_, false);
+}
+
+TokenSequence ContextualEncoder::encode_with_debug(const TokenSequence& tokens, bool debug) {
+    // Allow passing the debug flag
+    return contextual_encode(tokens, context_map_, debug);
 }
 
 TokenSequence ContextualEncoder::decode(const TokenSequence& tokens) {
-    // Stub implementation that will be filled in later
-    return contextual_decode(tokens, context_map_);
+    // Add debug=false parameter to match the updated contextual_decode function
+    return contextual_decode(tokens, context_map_, 0, false);
+}
+
+TokenSequence ContextualEncoder::decode_with_debug(const TokenSequence& tokens, bool debug) {
+    // Allow passing the debug flag
+    return contextual_decode(tokens, context_map_, 0, debug);
 }
 
 // DefragEncoder implementation
@@ -637,7 +804,8 @@ void ComposedTokenizer::learn(const TokenSequence& tokens,
             std::cout << "ComposedTokenizer::learn - Learning tokenizer " << i + 1 
                       << " of " << tokenizers_.size() << std::endl;
         }
-        tokenizers_[i]->learn(current_tokens, std::nullopt, debug);
+        // pass in the current tokens, and use the previous tokenizer's output vocabulary as the input vocabulary
+        tokenizers_[i]->learn(current_tokens, tokenizers_[i-1]->get_output_vocab(), debug);
         current_tokens = tokenizers_[i]->encode(current_tokens);
     }
     

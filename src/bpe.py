@@ -1,7 +1,6 @@
 from typing import List, Set, Optional, Tuple, Dict, Union, NamedTuple
 
 
-
 def is_prefix(sequence: List[int], prefix: Tuple[int, ...]) -> bool:
     """Check if a sequence starts with a given prefix.
 
@@ -17,7 +16,7 @@ def is_prefix(sequence: List[int], prefix: Tuple[int, ...]) -> bool:
     return all(sequence[i] == prefix[i] for i in range(len(prefix)))
 
 
-def ensure_list(tokens: Union[List[int], Set[int],str, bytes]) -> List[int]:
+def ensure_list(tokens: Union[List[int], Set[int], str, bytes]) -> List[int]:
     """Convert input tokens to a list of integers.
 
     Args:
@@ -35,43 +34,50 @@ def ensure_list(tokens: Union[List[int], Set[int],str, bytes]) -> List[int]:
     return tokens
 
 
-
 # base class for all tokenizers
 class Tokenizer:
     """Base class for all tokenizer implementations.
-    
+
     This abstract class defines the interface that all tokenizer implementations must follow.
     Tokenizers are used to convert between different token representations while preserving
     the original information.
     """
-    def learn(self, tokens: Union[List[int], str, bytes], input_vocab: Optional[Set[int]] = None):
+
+    def learn(
+        self,
+        tokens: Union[List[int], str, bytes],
+        input_vocab: Optional[Set[int]] = None,
+    ):
         """Learn tokenization patterns from input data.
-        
+
         Args:
             tokens: Input tokens to learn from, can be list of integers, string, or bytes
             input_vocab: Optional set of input vocabulary tokens to consider
         """
         pass
+
     def encode(self, tokens: Union[List[int], str, bytes]) -> List[int]:
         """Encode input tokens into a new token representation.
-        
+
         Args:
             tokens: Input tokens to encode, can be list of integers, string, or bytes
-            
+
         Returns:
             List of encoded token IDs
         """
         pass
+
     def decode(self, tokens: List[int]) -> List[int]:
         """Decode encoded tokens back to their original representation.
-        
+
         Args:
             tokens: Encoded tokens to decode
-            
+
         Returns:
             List of decoded token IDs
         """
         pass
+
 
 ### byte pair encoding implementation
 def get_stats(tokens: List[int]) -> Dict[Tuple[int, int], int]:
@@ -133,7 +139,6 @@ class BPE(Tokenizer):
     max_output_vocab: int
     max_merges: int
 
-
     def __init__(
         self,
         merges: List[Tuple[int, int]] = [],
@@ -173,11 +178,9 @@ class BPE(Tokenizer):
 
         input_vocab = list(input_vocab)  # convert to list to fix order.
 
-
         # the zero-token corresponds to the empty string.
         self.merges = [(0, x) for x in input_vocab]
 
-        
         if self.max_output_vocab is None:
             self.max_output_vocab = self.max_merges + len(self.merges)
 
@@ -193,12 +196,10 @@ class BPE(Tokenizer):
         tokens = [inverse_token_values[(token,)] for token in tokens]
 
         if len(tokens) < 2:
-            self.output_vocab = set(
-                range(1, len(self.merges) + 1)
-            )
+            self.output_vocab = set(range(1, len(self.merges) + 1))
             return tokens
-        
-        next_token = max(input_vocab) + 1
+
+        next_token = max(self.token_values.keys()) + 1
 
         while len(self.merges) < self.max_output_vocab:
 
@@ -209,9 +210,9 @@ class BPE(Tokenizer):
             if stats[most_frequent_pair] == 1:
                 break
 
-  # reserve zero for empty string
+            # reserve zero for empty string
             tokens = merge_pairs(tokens, most_frequent_pair, next_token)
-            
+
             self.merges.append(most_frequent_pair)
             self.token_values[next_token] = (
                 self.token_values[most_frequent_pair[0]]
@@ -221,7 +222,7 @@ class BPE(Tokenizer):
 
             next_token += 1
 
-        self.output_vocab = set(range(1,len(self.merges) + 1))
+        self.output_vocab = set(range(1, len(self.merges) + 1))
         return tokens
 
     def encode(self, tokens: Union[List[int], str, bytes]) -> List[int]:
@@ -260,17 +261,18 @@ class BPE(Tokenizer):
 
 class DefragEncoder(Tokenizer):
     """A tokenizer that maps input vocabulary tokens to a continuous range of integers.
-    
+
     This tokenizer replaces the input vocabulary with a continuous range of integers [1, len(vocab)].
     This is useful for ensuring that token IDs are contiguous and start from 1.
     We start from 1 because eventually 0 will be reserved for the empty string.
-    
+
     Attributes:
         vocab_to_token: Dictionary mapping vocabulary tokens to their new token IDs
         token_to_vocab: Dictionary mapping new token IDs back to original vocabulary tokens
         input_vocab: Set of input vocabulary tokens
         output_vocab: Set of output token IDs
     """
+
     vocab_to_token: Dict[int, int]
     token_to_vocab: Dict[int, int]
     input_vocab: Set[int]
@@ -283,45 +285,48 @@ class DefragEncoder(Tokenizer):
         self.input_vocab = set()
         self.output_vocab = set()
 
-    def learn(self, tokens: Union[List[int], Set[int], str, bytes], input_vocab: Optional[Set[int]] = None):
+    def learn(
+        self,
+        tokens: Union[List[int], Set[int], str, bytes],
+        input_vocab: Optional[Set[int]] = None,
+    ):
         """Learn the vocabulary mapping from input tokens.
-        
+
         Args:
             tokens: Input tokens to learn from, can be list of integers, set of integers, string, or bytes
             input_vocab: Optional set of input vocabulary tokens to consider
         """
         tokens = ensure_list(tokens)
+
         if input_vocab is None:
             self.input_vocab = set(tokens)
         else:
             self.input_vocab = input_vocab
 
+        print("input vocab: ",input_vocab)
+
         self.output_vocab = set(range(1, len(self.input_vocab) + 1))
-        self.vocab_to_token = {
-            v: i + 1 for i, v in enumerate(self.input_vocab)
-        }
-        self.token_to_vocab = {
-            i + 1: v for i, v in enumerate(self.input_vocab)
-        }
+        self.vocab_to_token = {v: i + 1 for i, v in enumerate(self.input_vocab)}
+        self.token_to_vocab = {i + 1: v for i, v in enumerate(self.input_vocab)}
 
     def encode(self, tokens: Union[List[int], str, bytes]) -> List[int]:
         """Encode input tokens using the learned vocabulary mapping.
-        
+
         Args:
             tokens: Input tokens to encode, can be list of integers, string, or bytes
-            
+
         Returns:
             List of encoded token IDs in the range [1, len(vocab)]
         """
         tokens = ensure_list(tokens)
         return [self.vocab_to_token[token] for token in tokens]
-    
+
     def decode(self, tokens: List[int]) -> List[int]:
         """Decode encoded tokens back to their original vocabulary tokens.
-        
+
         Args:
             tokens: Encoded token IDs to decode
-            
+
         Returns:
             List of original vocabulary tokens
         """
@@ -395,11 +400,11 @@ def learn_contextual_tokenizer(
     # zero is the "empty string" token.
     # the empty string context can generate any singleton
     contextual_tokens = {v: {0: ()} for v in vocab}
-
+    # contextual_tokens = {v: {} for v in vocab}
     for context in vocab:
         for end_token in vocab:
             if end_token == 0:
-                # the empty token must always mean the empty string.s
+                # the empty token must always mean the empty string.
                 continue
             if len(contextual_token_counts[context][end_token]) > 0:
                 most_frequent_string = max(
@@ -414,8 +419,6 @@ def learn_contextual_tokenizer(
     return contextual_tokens
 
 
-
-
 def contextual_encode(
     tokens: List[int], contextual_tokens: Dict[int, Dict[int, str]]
 ) -> List[int]:
@@ -428,7 +431,6 @@ def contextual_encode(
     Returns:
         List of contextually encoded token IDs
     """
-
 
     # start with empty context
     encoded = []
@@ -445,7 +447,12 @@ def contextual_encode(
                 if len(tok_value) > len(best_value):
                     best_match = tok_idx
                     best_value = tok_value
-
+        if best_match == 0:
+            print("no match found for context: ", context, " at index: ", cur_idx, " with next token: ", tokens[cur_idx])
+            if context == 0:
+                print("context map: ", contextual_tokens[context])
+                import sys
+                sys.exit(0)
         encoded.append(best_match)
         context = best_match
         cur_idx += len(best_value)
@@ -454,7 +461,9 @@ def contextual_encode(
 
 
 def contextual_decode(
-    tokens: List[int], contextual_tokens: Dict[int, Dict[int, str]], initial_context: int = 0
+    tokens: List[int],
+    contextual_tokens: Dict[int, Dict[int, str]],
+    initial_context: int = 0,
 ) -> str:
     """Decode contextually encoded tokens back to their original form.
 
@@ -475,11 +484,11 @@ def contextual_decode(
 
 class ContextualEncoder(Tokenizer):
     """A tokenizer that uses context to determine token mappings.
-    
+
     This tokenizer learns contextual relationships between tokens and uses them to encode
     and decode sequences. The context helps determine which token mappings to use based
     on the surrounding tokens.
-    
+
     Attributes:
         contextual_tokens: Dictionary mapping context tokens to their contextual token mappings
         input_vocab: Set of input vocabulary tokens
@@ -490,12 +499,9 @@ class ContextualEncoder(Tokenizer):
     input_vocab: Set[int]
     output_vocab: Set[int]
 
-    def __init__(
-        self,
-        contextual_tokens: Dict[int, Dict[int, str]] = {}
-    ):
+    def __init__(self, contextual_tokens: Dict[int, Dict[int, str]] = {}):
         """Initialize a new ContextualEncoder.
-        
+
         Args:
             contextual_tokens: Optional dictionary of pre-learned contextual token mappings
         """
@@ -507,11 +513,11 @@ class ContextualEncoder(Tokenizer):
         input_vocab: Optional[Set[str]] = None,
     ) -> Tuple[List[int]]:
         """Learn contextual token mappings from input tokens.
-        
+
         Args:
             tokens: Input tokens to learn from
             input_vocab: Optional set of input vocabulary tokens to consider
-            
+
         Returns:
             Tuple containing the encoded tokens
         """
@@ -521,10 +527,10 @@ class ContextualEncoder(Tokenizer):
 
     def encode(self, tokens: List[int]) -> List[int]:
         """Encode input tokens using contextual token mappings.
-        
+
         Args:
             tokens: Input tokens to encode
-            
+
         Returns:
             List of contextually encoded token IDs
         """
@@ -534,10 +540,10 @@ class ContextualEncoder(Tokenizer):
 
     def decode(self, tokens: Union[List[int], str, bytes]) -> List[int]:
         """Decode contextually encoded tokens back to their original form.
-        
+
         Args:
             tokens: Contextually encoded tokens to decode
-            
+
         Returns:
             List of decoded original tokens
         """
@@ -547,11 +553,11 @@ class ContextualEncoder(Tokenizer):
 
 class ComposedTokenizer(Tokenizer):
     """A tokenizer that applies a sequence of tokenizers in order.
-    
+
     This tokenizer chains multiple tokenizers together, applying them sequentially
     to transform the input tokens. The output of each tokenizer becomes the input
     to the next one in the sequence.
-    
+
     Attributes:
         tokenizers: List of tokenizers to apply in sequence
         input_vocab: Set of input vocabulary tokens from the first tokenizer
@@ -560,7 +566,7 @@ class ComposedTokenizer(Tokenizer):
 
     def __init__(self, tokenizers: List[Tokenizer]):
         """Initialize a new ComposedTokenizer.
-        
+
         Args:
             tokenizers: List of tokenizers to apply in sequence
         """
@@ -568,9 +574,14 @@ class ComposedTokenizer(Tokenizer):
         self.input_vocab = set()
         self.output_vocab = set()
 
-    def learn(self, tokens: Union[List[int], str, bytes], input_vocab: Optional[Set[int]] = None):
+    def learn(
+        self,
+        tokens: Union[List[int], str, bytes],
+        input_vocab: Optional[Set[int]] = None,
+        debug: bool = False,
+    ):
         """Learn tokenization patterns from input data using all tokenizers in sequence.
-        
+
         Args:
             tokens: Input tokens to learn from, can be list of integers, string, or bytes
             input_vocab: Optional set of input vocabulary tokens to consider
@@ -587,24 +598,27 @@ class ComposedTokenizer(Tokenizer):
 
     def encode(self, tokens: Union[List[int], str, bytes]) -> List[int]:
         """Encode input tokens by applying all tokenizers in sequence.
-        
+
         Args:
             tokens: Input tokens to encode, can be list of integers, string, or bytes
-            
+
         Returns:
             List of encoded token IDs after applying all tokenizers
         """
+        print('sdfsdfsdf')
         tokens = ensure_list(tokens)
+        print("encoding tokens: ", tokens)
         for idx, tokenizer in enumerate(self.tokenizers):
             tokens = tokenizer.encode(tokens)
+            print("encoded tokens: ", tokens)
         return tokens
 
     def decode(self, tokens: Union[List[int], str, bytes]) -> List[int]:
         """Decode encoded tokens by applying all tokenizers in reverse sequence.
-        
+
         Args:
             tokens: Encoded tokens to decode, can be list of integers, string, or bytes
-            
+
         Returns:
             List of decoded original tokens
         """
@@ -612,7 +626,8 @@ class ComposedTokenizer(Tokenizer):
         for idx, tokenizer in enumerate(self.tokenizers[::-1]):
             tokens = tokenizer.decode(tokens)
         return tokens
-    
+
+
 __all__ = ["BPE", "DefragEncoder", "ContextualEncoder", "ComposedTokenizer"]
 
 if __name__ == "__main__":
@@ -620,7 +635,7 @@ if __name__ == "__main__":
     text = "aaabdaaabacaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaabcd"
     max_output_vocab = 10000
     bpe = ComposedTokenizer([DefragEncoder(), BPE(max_output_vocab=max_output_vocab)])
-    bpe.learn(text)
+    bpe.learn(text, debug=False)
     tokens = bpe.encode(text)
     print("bpe encoding: ", tokens)
     print("bpe: ", bpe)
@@ -629,8 +644,9 @@ if __name__ == "__main__":
     re_encoded_tokens = bpe.encode(text)
     print("re-encoded tokens: ", re_encoded_tokens)
 
-
-    print("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+    print(
+        "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+    )
 
     text = "aaabdaaabacaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaabcd"
     max_output_vocab = 4
@@ -644,15 +660,12 @@ if __name__ == "__main__":
     re_encoded_tokens = bpe.encode(text)
     print("re-encoded tokens: ", re_encoded_tokens)
 
-
-    print("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+    print(
+        "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+    )
 
     contextual_bpe = ComposedTokenizer(
-        [
-            DefragEncoder(),
-            BPE(max_output_vocab=max_output_vocab),
-            ContextualEncoder()
-        ]
+        [DefragEncoder(), BPE(max_output_vocab=max_output_vocab), ContextualEncoder()]
     )
     contextual_bpe.learn(text)
     print("contextual bpe: ", contextual_bpe)
@@ -662,17 +675,12 @@ if __name__ == "__main__":
         contextual_bpe.decode(contextual_bpe.encode(text.encode("utf-8"))),
     )
 
-
-
-
-    print("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+    print(
+        "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+    )
 
     contextual_bpe = ComposedTokenizer(
-        [
-            DefragEncoder(),
-            BPE(max_output_vocab=10000),
-            ContextualEncoder()
-        ]
+        [DefragEncoder(), BPE(max_output_vocab=10000), ContextualEncoder()]
     )
     contextual_bpe.learn(text)
     print("contextual bpe: ", contextual_bpe)

@@ -129,41 +129,47 @@ TokenSequence merge_pairs(const TokenSequence& tokens, const TokenPair& pair, To
  * @brief Calculate statistics about token sequences in different contexts
  * @param tokens Vector of token IDs to analyze
  * @param vocab Set of vocabulary tokens to consider
+ * @param debug Whether to print debug information during processing
  * @return Nested map of context -> token -> substring -> count
  */
 std::unordered_map<TokenType, std::unordered_map<TokenType, std::unordered_map<TokenTuple, int, TokenTupleHash, TokenTupleEquals>>> 
-get_context_stats(const TokenSequence& tokens, const VocabSet& vocab);
+get_context_stats(const TokenSequence& tokens, const VocabSet& vocab, bool debug = false);
 
 /**
  * @brief Learn a contextual tokenizer from input tokens
  * @param tokens Vector of token IDs to learn from
  * @param vocab Optional set of vocabulary tokens to consider
+ * @param debug Whether to print debug information during learning
  * @return Map of context tokens to their contextual token mappings
  */
 std::unordered_map<TokenType, std::unordered_map<TokenType, TokenTuple>> 
-learn_contextual_tokenizer(const TokenSequence& tokens, const std::optional<VocabSet>& vocab = std::nullopt);
+learn_contextual_tokenizer(const TokenSequence& tokens, const std::optional<VocabSet>& vocab = std::nullopt, bool debug = false);
 
 /**
  * @brief Encode tokens using a contextual tokenizer
  * @param tokens Vector of token IDs to encode
  * @param contextual_tokens Map of context tokens to their contextual token mappings
+ * @param debug Whether to print debug information during encoding
  * @return Vector of contextually encoded token IDs
  */
 TokenSequence contextual_encode(
     const TokenSequence& tokens, 
-    const std::unordered_map<TokenType, std::unordered_map<TokenType, TokenTuple>>& contextual_tokens);
+    const std::unordered_map<TokenType, std::unordered_map<TokenType, TokenTuple>>& contextual_tokens,
+    bool debug = false);
 
 /**
  * @brief Decode contextually encoded tokens back to their original form
  * @param tokens Vector of contextually encoded token IDs
  * @param contextual_tokens Map of context tokens to their contextual token mappings
  * @param initial_context Initial context token ID
+ * @param debug Whether to print debug information during decoding
  * @return Vector of decoded original token IDs
  */
 TokenSequence contextual_decode(
     const TokenSequence& tokens, 
     const std::unordered_map<TokenType, std::unordered_map<TokenType, TokenTuple>>& contextual_tokens,
-    TokenType initial_context = 0);
+    TokenType initial_context = 0,
+    bool debug = false);
 
 /**
  * @brief BPE tokenizer implementation
@@ -279,11 +285,27 @@ public:
     TokenSequence encode(const TokenSequence& tokens) override;
 
     /**
+     * @brief Encode input tokens using contextual information with debug output
+     * @param tokens Input tokens to encode
+     * @param debug Whether to print debug information during encoding
+     * @return Vector of encoded token IDs
+     */
+    TokenSequence encode_with_debug(const TokenSequence& tokens, bool debug);
+
+    /**
      * @brief Decode contextually encoded tokens back to their original form
      * @param tokens Encoded tokens to decode
      * @return Vector of decoded token IDs
      */
     TokenSequence decode(const TokenSequence& tokens) override;
+
+    /**
+     * @brief Decode contextually encoded tokens back to their original form with debug output
+     * @param tokens Encoded tokens to decode
+     * @param debug Whether to print debug information during decoding
+     * @return Vector of decoded token IDs
+     */
+    TokenSequence decode_with_debug(const TokenSequence& tokens, bool debug);
 
     /**
      * @brief Get the input vocabulary set

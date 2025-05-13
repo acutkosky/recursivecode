@@ -294,7 +294,7 @@ NB_MODULE(contok, m) {
         
     // Define ContextualEncoder class
     nb::class_<bpe::ContextualEncoder>(bpe_submodule, "ContextualEncoder")
-        .def(nb::init<std::optional<int>>(), "max_token_value"_a = nb::none())
+        .def(nb::init<std::optional<int>, std::optional<int>, std::optional<int>>(), "max_token_value"_a = nb::none(), "max_length"_a = nb::none(), "singleton_init_count"_a = nb::none())
         .def("learn", &bpe_bindings::learn_contextual_wrapper, "tokens"_a, "input_vocab"_a = nb::none(), "debug"_a = false)
         .def("encode", static_cast<bpe::TokenSequence (bpe::ContextualEncoder::*)(const bpe::TokenSequence&)>(&bpe::ContextualEncoder::encode), "tokens"_a)
         .def("decode", static_cast<bpe::TokenSequence (bpe::ContextualEncoder::*)(const bpe::TokenSequence&)>(&bpe::ContextualEncoder::decode), "tokens"_a)

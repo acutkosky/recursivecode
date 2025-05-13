@@ -236,7 +236,7 @@ void BPE::learn(const TokenSequence& tokens,
         // The token ID for merges after the initial vocab is the merge index + 1
         TokenType merge_token_id = static_cast<TokenType>(merges_.size());
         token_values_[merge_token_id] = new_token_value;
-        inverse_token_values[new_token_value] = merge_token_id;
+        // inverse_token_values[new_token_value] = merge_token_id;
         
         // Increment next token
         next_token++;
@@ -321,10 +321,16 @@ TokenSequence BPE::decode(const TokenSequence& tokens) {
  * Calculate statistics about token sequences in different contexts
  */
 std::unordered_map<TokenType, std::unordered_map<TokenType, std::unordered_map<TokenTuple, int, TokenTupleHash, TokenTupleEquals>>> 
-get_context_stats(const TokenSequence& tokens, const VocabSet& vocab, bool debug) {
+get_context_stats(const TokenSequence& tokens, const VocabSet& vocab, bool debug, 
+                  const std::optional<int>& max_length,
+                  const std::optional<int>& singleton_init_count) {
     if (debug) {
         std::cout << "get_context_stats - Starting analysis of " << tokens.size() 
-                  << " tokens with vocabulary size " << vocab.size() << std::endl;
+                  << " tokens with vocabulary size " << vocab.size();
+        if (max_length.has_value()) {
+            std::cout << " and max_length " << max_length.value();
+        }
+        std::cout << std::endl;
     }
     
     // Initialize stats dictionary - for each context and each token, store a map of substrings to counts
@@ -339,6 +345,7 @@ get_context_stats(const TokenSequence& tokens, const VocabSet& vocab, bool debug
         stats[context] = std::unordered_map<TokenType, std::unordered_map<TokenTuple, int, TokenTupleHash, TokenTupleEquals>>();
         for (const auto& token : vocab) {
             stats[context][token] = std::unordered_map<TokenTuple, int, TokenTupleHash, TokenTupleEquals>();
+            stats[context][token][{token}] = singleton_init_count.value_or(0);
         }
     }
     
@@ -354,6 +361,8 @@ get_context_stats(const TokenSequence& tokens, const VocabSet& vocab, bool debug
     
     // For tracking progress in debug mode
     size_t last_progress = 0;
+    // For tracking how many substrings were skipped due to length limit
+    size_t skipped_count = 0;
     
     // Process each token in the sequence
     for (size_t idx = 0; idx < tokens.size(); ++idx) {
@@ -363,9 +372,14 @@ get_context_stats(const TokenSequence& tokens, const VocabSet& vocab, bool debug
         for (const auto& v : vocab) {
             int start = start_idx[v];
             if (start != -1) {
-                // Extract substring from start+1 to current position
-                TokenTuple sub_string(tokens.begin() + start + 1, tokens.begin() + idx + 1);
-                stats[v][token][sub_string]++;
+                // Only add to stats if no max_length is set or the substring length is within limit
+                if (!max_length.has_value() || (idx - start) <= static_cast<size_t>(max_length.value())) {
+                    // Extract substring from start+1 to current position
+                    TokenTuple sub_string(tokens.begin() + start + 1, tokens.begin() + idx + 1);
+                    stats[v][token][sub_string]++;
+                } else {
+                    skipped_count++;
+                }
             }
         }
         
@@ -376,7 +390,11 @@ get_context_stats(const TokenSequence& tokens, const VocabSet& vocab, bool debug
         if (debug && (idx * 100 / tokens.size() > last_progress || idx == tokens.size() - 1)) {
             last_progress = idx * 100 / tokens.size();
             std::cout << "get_context_stats - Progress: " << last_progress << "% (" 
-                      << idx + 1 << "/" << tokens.size() << " tokens)" << std::endl;
+                      << idx + 1 << "/" << tokens.size() << " tokens)";
+            if (skipped_count > 0) {
+                std::cout << ", skipped " << skipped_count << " substrings due to length limit";
+            }
+            std::cout << std::endl;
         }
     }
     
@@ -395,7 +413,11 @@ get_context_stats(const TokenSequence& tokens, const VocabSet& vocab, bool debug
         }
         
         std::cout << "get_context_stats - Finished with statistics for " << context_pairs 
-                  << " context-token pairs and " << total_substrings << " unique substrings" << std::endl;
+                  << " context-token pairs and " << total_substrings << " unique substrings";
+        if (skipped_count > 0) {
+            std::cout << " (skipped " << skipped_count << " substrings due to length limit)";
+        }
+        std::cout << std::endl;
     }
     
     return stats;
@@ -405,9 +427,15 @@ get_context_stats(const TokenSequence& tokens, const VocabSet& vocab, bool debug
  * Learn a contextual tokenizer from input tokens
  */
 std::unordered_map<TokenType, std::unordered_map<TokenType, TokenTuple>> 
-learn_contextual_tokenizer(const TokenSequence& tokens, const std::optional<VocabSet>& vocab_opt, bool debug) {
+learn_contextual_tokenizer(const TokenSequence& tokens, const std::optional<VocabSet>& vocab_opt, 
+                           bool debug, const std::optional<int>& max_length,
+                           const std::optional<int>& singleton_init_count) {
     if (debug) {
-        std::cout << "learn_contextual_tokenizer - Starting with " << tokens.size() << " input tokens" << std::endl;
+        std::cout << "learn_contextual_tokenizer - Starting with " << tokens.size() << " input tokens";
+        if (max_length.has_value()) {
+            std::cout << " and max_length " << max_length.value();
+        }
+        std::cout << std::endl;
     }
     
     // Initialize vocabulary if not provided
@@ -426,7 +454,7 @@ learn_contextual_tokenizer(const TokenSequence& tokens, const std::optional<Voca
     if (debug) {
         std::cout << "learn_contextual_tokenizer - Computing context statistics..." << std::endl;
     }
-    auto contextual_token_counts = get_context_stats(tokens, vocab, debug);
+    auto contextual_token_counts = get_context_stats(tokens, vocab, debug, max_length, singleton_init_count);
     
     if (debug) {
         std::cout << "learn_contextual_tokenizer - Gathered statistics for " << contextual_token_counts.size() << " contexts" << std::endl;
@@ -447,8 +475,8 @@ learn_contextual_tokenizer(const TokenSequence& tokens, const std::optional<Voca
     }
     
     // For debug progress tracking
-    int processed = 0;
-    size_t total_pairs = vocab.size() * vocab.size();
+    // int processed = 0;
+    // size_t total_pairs = vocab.size() * vocab.size();
     
     // Process each context and end token
     for (const auto& context : vocab) {
@@ -643,19 +671,25 @@ TokenSequence contextual_decode(
 }
 
 // ContextualEncoder implementation
-ContextualEncoder::ContextualEncoder(std::optional<int> max_token_value)
-    : max_token_value_(max_token_value) {
+ContextualEncoder::ContextualEncoder(std::optional<int> max_token_value, std::optional<int> max_length, std::optional<int> singleton_init_count)
+    : max_token_value_(max_token_value),
+      max_length_(max_length),
+      singleton_init_count_(singleton_init_count) {
 }
 
 void ContextualEncoder::learn(const TokenSequence& tokens, 
                          const std::optional<VocabSet>& input_vocab,
                          bool debug) {
     if (debug) {
-        std::cout << "ContextualEncoder::learn - Starting learning" << std::endl;
+        std::cout << "ContextualEncoder::learn - Starting learning";
+        if (max_length_.has_value()) {
+            std::cout << " with max_length " << max_length_.value();
+        }
+        std::cout << std::endl;
     }
     
     // Learn contextual tokenizer
-    context_map_ = learn_contextual_tokenizer(tokens, input_vocab, debug);
+    context_map_ = learn_contextual_tokenizer(tokens, input_vocab, debug, max_length_, singleton_init_count_);
     input_vocab_ = VocabSet();
     output_vocab_ = VocabSet();
     

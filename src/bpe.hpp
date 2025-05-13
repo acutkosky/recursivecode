@@ -130,20 +130,24 @@ TokenSequence merge_pairs(const TokenSequence& tokens, const TokenPair& pair, To
  * @param tokens Vector of token IDs to analyze
  * @param vocab Set of vocabulary tokens to consider
  * @param debug Whether to print debug information during processing
+ * @param max_length Optional maximum length of substrings to consider
  * @return Nested map of context -> token -> substring -> count
  */
 std::unordered_map<TokenType, std::unordered_map<TokenType, std::unordered_map<TokenTuple, int, TokenTupleHash, TokenTupleEquals>>> 
-get_context_stats(const TokenSequence& tokens, const VocabSet& vocab, bool debug = false);
+get_context_stats(const TokenSequence& tokens, const VocabSet& vocab, bool debug = false, 
+                  const std::optional<int>& max_length = std::nullopt);
 
 /**
  * @brief Learn a contextual tokenizer from input tokens
  * @param tokens Vector of token IDs to learn from
  * @param vocab Optional set of vocabulary tokens to consider
  * @param debug Whether to print debug information during learning
+ * @param max_length Optional maximum length of substrings to consider
  * @return Map of context tokens to their contextual token mappings
  */
 std::unordered_map<TokenType, std::unordered_map<TokenType, TokenTuple>> 
-learn_contextual_tokenizer(const TokenSequence& tokens, const std::optional<VocabSet>& vocab = std::nullopt, bool debug = false);
+learn_contextual_tokenizer(const TokenSequence& tokens, const std::optional<VocabSet>& vocab = std::nullopt, 
+                           bool debug = false, const std::optional<int>& max_length = std::nullopt);
 
 /**
  * @brief Encode tokens using a contextual tokenizer
@@ -264,8 +268,12 @@ public:
     /**
      * @brief Construct a new ContextualEncoder
      * @param max_token_value Optional maximum token value to use
+     * @param max_length Optional maximum length of context sequences to consider
+     * @param singleton_init_count Optional number of times to initialize singleton tokens
      */
-    ContextualEncoder(std::optional<int> max_token_value = std::nullopt);
+    ContextualEncoder(std::optional<int> max_token_value = std::nullopt,
+                      std::optional<int> max_length = std::nullopt,
+                      std::optional<int> singleton_init_count = std::nullopt);
 
     /**
      * @brief Learn contextual encoding patterns from input data
@@ -328,6 +336,8 @@ private:
     VocabSet output_vocab_;
     std::unordered_map<TokenType, std::unordered_map<TokenType, TokenTuple>> context_map_;
     std::optional<int> max_token_value_;
+    std::optional<int> max_length_; // Maximum length of context sequences
+    std::optional<int> singleton_init_count_; // Number of times to initialize singleton tokens
 };
 
 /**

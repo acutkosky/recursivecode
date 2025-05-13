@@ -402,11 +402,11 @@ def learn_contextual_tokenizer(
                 # the empty token must always mean the empty string.s
                 continue
             if len(contextual_token_counts[context][end_token]) > 0:
-                longest_string = max(
+                most_frequent_string = max(
                     contextual_token_counts[context][end_token],
                     key=contextual_token_counts[context][end_token].get,
                 )
-                contextual_tokens[context][end_token] = longest_string
+                contextual_tokens[context][end_token] = most_frequent_string
 
     # empty string can generate any singleton
     contextual_tokens[0] = {v: (v,) for v in vocab}
@@ -435,7 +435,6 @@ def contextual_encode(
     context = 0
 
     cur_idx = 0
-
     while cur_idx < len(tokens):
         best_match = 0
         best_value = ()

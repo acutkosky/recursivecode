@@ -218,16 +218,16 @@ void BPE::learn(const TokenSequence& tokens,
         output_vocab_.insert(static_cast<TokenType>(i));
     }
     
-    // Debug output of token_values_
-    std::cout << "Final token_values_ after learning:" << std::endl;
-    for (const auto& [token, value] : token_values_) {
-        std::cout << "Token " << token << " -> [";
-        for (size_t i = 0; i < value.size(); ++i) {
-            if (i > 0) std::cout << ", ";
-            std::cout << value[i];
-        }
-        std::cout << "]" << std::endl;
-    }
+    // // Debug output of token_values_
+    // std::cout << "Final token_values_ after learning:" << std::endl;
+    // for (const auto& [token, value] : token_values_) {
+    //     std::cout << "Token " << token << " -> [";
+    //     for (size_t i = 0; i < value.size(); ++i) {
+    //         if (i > 0) std::cout << ", ";
+    //         std::cout << value[i];
+    //     }
+    //     std::cout << "]" << std::endl;
+    // }
 }
 
 TokenSequence BPE::encode(const TokenSequence& tokens) {

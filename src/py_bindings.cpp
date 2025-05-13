@@ -280,6 +280,30 @@ NB_MODULE(contok, m) {
     // Define ComposedTokenizer class
     nb::class_<bpe::ComposedTokenizer>(bpe_submodule, "ComposedTokenizer")
         .def(nb::init<const std::vector<std::shared_ptr<bpe::Tokenizer>>&>(), "tokenizers"_a)
+        .def("__init__", [](bpe::ComposedTokenizer* self, nb::list tokenizers) {
+            std::vector<std::shared_ptr<bpe::Tokenizer>> tokenizer_ptrs;
+            
+            for (auto tokenizer_obj : tokenizers) {
+                // Check for different tokenizer types and convert them to shared_ptr<Tokenizer>
+                if (nb::isinstance<bpe::BPE>(tokenizer_obj)) {
+                    auto tokenizer = std::make_shared<bpe::BPE>(nb::cast<bpe::BPE>(tokenizer_obj));
+                    tokenizer_ptrs.push_back(tokenizer);
+                } 
+                else if (nb::isinstance<bpe::DefragEncoder>(tokenizer_obj)) {
+                    auto tokenizer = std::make_shared<bpe::DefragEncoder>(nb::cast<bpe::DefragEncoder>(tokenizer_obj));
+                    tokenizer_ptrs.push_back(tokenizer);
+                }
+                else if (nb::isinstance<bpe::ContextualEncoder>(tokenizer_obj)) {
+                    auto tokenizer = std::make_shared<bpe::ContextualEncoder>(nb::cast<bpe::ContextualEncoder>(tokenizer_obj));
+                    tokenizer_ptrs.push_back(tokenizer);
+                }
+                else {
+                    throw std::runtime_error("Unsupported tokenizer type");
+                }
+            }
+            
+            new (self) bpe::ComposedTokenizer(tokenizer_ptrs);
+        }, "tokenizers"_a)
         .def("learn", &bpe::ComposedTokenizer::learn, "tokens"_a, "input_vocab"_a = nb::none())
         .def("encode", static_cast<bpe::TokenSequence (bpe::ComposedTokenizer::*)(const bpe::TokenSequence&)>(&bpe::ComposedTokenizer::encode), "tokens"_a)
         .def("decode", static_cast<bpe::TokenSequence (bpe::ComposedTokenizer::*)(const bpe::TokenSequence&)>(&bpe::ComposedTokenizer::decode), "tokens"_a)

@@ -278,17 +278,104 @@ TokenSequence BPE::decode(const TokenSequence& tokens) {
  */
 std::unordered_map<TokenType, std::unordered_map<TokenType, std::unordered_map<TokenTuple, int, TokenTupleHash, TokenTupleEquals>>> 
 get_context_stats(const TokenSequence& tokens, const VocabSet& vocab) {
-    // Stub implementation
-    return {};
+    // Initialize stats dictionary - for each context and each token, store a map of substrings to counts
+    std::unordered_map<TokenType, std::unordered_map<TokenType, std::unordered_map<TokenTuple, int, TokenTupleHash, TokenTupleEquals>>> stats;
+    
+    // Initialize stats for each context and token pair
+    for (const auto& context : vocab) {
+        stats[context] = std::unordered_map<TokenType, std::unordered_map<TokenTuple, int, TokenTupleHash, TokenTupleEquals>>();
+        for (const auto& token : vocab) {
+            stats[context][token] = std::unordered_map<TokenTuple, int, TokenTupleHash, TokenTupleEquals>();
+        }
+    }
+    
+    // Initialize starting point indices for each vocab token
+    std::unordered_map<TokenType, int> start_idx;
+    for (const auto& v : vocab) {
+        start_idx[v] = -1;
+    }
+    
+    // Process each token in the sequence
+    for (size_t idx = 0; idx < tokens.size(); ++idx) {
+        TokenType token = tokens[idx];
+        
+        // Update string finders for all other tokens
+        for (const auto& v : vocab) {
+            int start = start_idx[v];
+            if (start != -1) {
+                // Extract substring from start+1 to current position
+                TokenTuple sub_string(tokens.begin() + start + 1, tokens.begin() + idx + 1);
+                stats[v][token][sub_string]++;
+            }
+        }
+        
+        // Restart string finder for current token
+        start_idx[token] = idx;
+    }
+    
+    return stats;
 }
 
 /**
  * Learn a contextual tokenizer from input tokens
  */
 std::unordered_map<TokenType, std::unordered_map<TokenType, TokenTuple>> 
-learn_contextual_tokenizer(const TokenSequence& tokens, const std::optional<VocabSet>& vocab) {
-    // Stub implementation
-    return {};
+learn_contextual_tokenizer(const TokenSequence& tokens, const std::optional<VocabSet>& vocab_opt) {
+    // Initialize vocabulary if not provided
+    VocabSet vocab;
+    if (vocab_opt.has_value()) {
+        vocab = vocab_opt.value();
+    } else {
+        vocab = VocabSet(tokens.begin(), tokens.end());
+    }
+    
+    // Get context statistics
+    auto contextual_token_counts = get_context_stats(tokens, vocab);
+    
+    // Initialize contextual_tokens with empty string context
+    std::unordered_map<TokenType, std::unordered_map<TokenType, TokenTuple>> contextual_tokens;
+    
+    // Zero is the "empty string" token
+    // The empty string context can generate empty string
+    for (const auto& v : vocab) {
+        contextual_tokens[v] = std::unordered_map<TokenType, TokenTuple>();
+        contextual_tokens[v][0] = TokenTuple();  // Empty string
+    }
+    
+    // Process each context and end token
+    for (const auto& context : vocab) {
+        for (const auto& end_token : vocab) {
+            if (end_token == 0) {
+                // The empty token must always mean the empty string
+                continue;
+            }
+            
+            // Find the longest substring for this context and end token
+            if (!contextual_token_counts[context][end_token].empty()) {
+                TokenTuple longest_string;
+                int max_count = 0;
+                
+                // Find most frequent substring
+                for (const auto& [substring, count] : contextual_token_counts[context][end_token]) {
+                    if (count > max_count) {
+                        max_count = count;
+                        longest_string = substring;
+                    }
+                }
+                
+                contextual_tokens[context][end_token] = longest_string;
+            }
+        }
+    }
+    
+    // Empty string can generate any singleton
+    contextual_tokens[0] = std::unordered_map<TokenType, TokenTuple>();
+    for (const auto& v : vocab) {
+        TokenTuple singleton = {v};
+        contextual_tokens[0][v] = singleton;
+    }
+    
+    return contextual_tokens;
 }
 
 /**
@@ -297,8 +384,36 @@ learn_contextual_tokenizer(const TokenSequence& tokens, const std::optional<Voca
 TokenSequence contextual_encode(
     const TokenSequence& tokens, 
     const std::unordered_map<TokenType, std::unordered_map<TokenType, TokenTuple>>& contextual_tokens) {
-    // Stub implementation
-    return {};
+    
+    // Start with empty context
+    TokenSequence encoded;
+    TokenType context = 0;
+    
+    size_t cur_idx = 0;
+    
+    while (cur_idx < tokens.size()) {
+        TokenType best_match = 0;
+        TokenTuple best_value;
+        
+        // Find the best token match in current context
+        for (const auto& [tok_idx, tok_value] : contextual_tokens.at(context)) {
+            // If tokens[cur_idx:] starts with tok_value, we have a match
+            if (cur_idx + tok_value.size() <= tokens.size() && 
+                std::equal(tok_value.begin(), tok_value.end(), tokens.begin() + cur_idx)) {
+                // Find the longest match
+                if (tok_value.size() > best_value.size()) {
+                    best_match = tok_idx;
+                    best_value = tok_value;
+                }
+            }
+        }
+        
+        encoded.push_back(best_match);
+        context = best_match;
+        cur_idx += best_value.size();
+    }
+    
+    return encoded;
 }
 
 /**
@@ -308,8 +423,22 @@ TokenSequence contextual_decode(
     const TokenSequence& tokens, 
     const std::unordered_map<TokenType, std::unordered_map<TokenType, TokenTuple>>& contextual_tokens,
     TokenType initial_context) {
-    // Stub implementation
-    return {};
+    
+    TokenSequence decoded;
+    TokenType context = initial_context;
+    
+    for (const auto& token : tokens) {
+        // Get the token value for this context and token
+        const auto& token_value = contextual_tokens.at(context).at(token);
+        
+        // Add token value to decoded sequence
+        decoded.insert(decoded.end(), token_value.begin(), token_value.end());
+        
+        // Update context
+        context = token;
+    }
+    
+    return decoded;
 }
 
 // ContextualEncoder implementation
@@ -397,6 +526,62 @@ TokenSequence DefragEncoder::decode(const TokenSequence& tokens) {
     return decoded;
 }
 
-// Helper functions for ContextualEncoder
+// ComposedTokenizer implementation
+ComposedTokenizer::ComposedTokenizer(const std::vector<std::shared_ptr<Tokenizer>>& tokenizers)
+    : tokenizers_(tokenizers) {
+    // Nothing else to initialize
+}
+
+void ComposedTokenizer::learn(const TokenSequence& tokens, 
+                             const std::optional<VocabSet>& input_vocab) {
+    if (tokenizers_.empty()) {
+        return;
+    }
+    
+    // Start with the input tokens
+    TokenSequence current_tokens = tokens;
+    
+    // For the first tokenizer, use the provided input_vocab
+    tokenizers_[0]->learn(current_tokens, input_vocab);
+    current_tokens = tokenizers_[0]->encode(current_tokens);
+    
+    // For the rest of the tokenizers, use no input_vocab constraints
+    for (size_t i = 1; i < tokenizers_.size(); ++i) {
+        tokenizers_[i]->learn(current_tokens, std::nullopt);
+        current_tokens = tokenizers_[i]->encode(current_tokens);
+    }
+}
+
+TokenSequence ComposedTokenizer::encode(const TokenSequence& tokens) {
+    if (tokenizers_.empty()) {
+        return tokens;
+    }
+    
+    // Start with the input tokens
+    TokenSequence current_tokens = tokens;
+    
+    // Pass through each tokenizer in sequence
+    for (auto& tokenizer : tokenizers_) {
+        current_tokens = tokenizer->encode(current_tokens);
+    }
+    
+    return current_tokens;
+}
+
+TokenSequence ComposedTokenizer::decode(const TokenSequence& tokens) {
+    if (tokenizers_.empty()) {
+        return tokens;
+    }
+    
+    // Start with the input tokens
+    TokenSequence current_tokens = tokens;
+    
+    // Pass through each tokenizer in reverse sequence
+    for (auto it = tokenizers_.rbegin(); it != tokenizers_.rend(); ++it) {
+        current_tokens = (*it)->decode(current_tokens);
+    }
+    
+    return current_tokens;
+}
 
 } // namespace bpe 

@@ -276,4 +276,13 @@ NB_MODULE(contok, m) {
         .def("decode", static_cast<bpe::TokenSequence (bpe::ContextualEncoder::*)(const bpe::TokenSequence&)>(&bpe::ContextualEncoder::decode), "tokens"_a)
         .def_prop_ro("output_vocab", &bpe::ContextualEncoder::get_output_vocab)
         .def_prop_ro("input_vocab", &bpe::ContextualEncoder::get_input_vocab);
+        
+    // Define ComposedTokenizer class
+    nb::class_<bpe::ComposedTokenizer>(bpe_submodule, "ComposedTokenizer")
+        .def(nb::init<const std::vector<std::shared_ptr<bpe::Tokenizer>>&>(), "tokenizers"_a)
+        .def("learn", &bpe::ComposedTokenizer::learn, "tokens"_a, "input_vocab"_a = nb::none())
+        .def("encode", static_cast<bpe::TokenSequence (bpe::ComposedTokenizer::*)(const bpe::TokenSequence&)>(&bpe::ComposedTokenizer::encode), "tokens"_a)
+        .def("decode", static_cast<bpe::TokenSequence (bpe::ComposedTokenizer::*)(const bpe::TokenSequence&)>(&bpe::ComposedTokenizer::decode), "tokens"_a)
+        .def_prop_ro("output_vocab", &bpe::ComposedTokenizer::get_output_vocab)
+        .def_prop_ro("input_vocab", &bpe::ComposedTokenizer::get_input_vocab);
 } 

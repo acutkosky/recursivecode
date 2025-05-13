@@ -91,6 +91,18 @@ public:
      * @return Vector of decoded token IDs
      */
     virtual TokenSequence decode(const TokenSequence& tokens) = 0;
+    
+    /**
+     * @brief Get the input vocabulary set
+     * @return Set of input vocabulary tokens
+     */
+    virtual const VocabSet& get_input_vocab() const = 0;
+    
+    /**
+     * @brief Get the output vocabulary set
+     * @return Set of output token IDs
+     */
+    virtual const VocabSet& get_output_vocab() const = 0;
 };
 
 // BPE utility functions
@@ -212,7 +224,7 @@ public:
      * @brief Get the input vocabulary set
      * @return Set of input vocabulary tokens
      */
-    const VocabSet& get_input_vocab() const {
+    const VocabSet& get_input_vocab() const override {
         return input_vocab_;
     }
 
@@ -220,7 +232,7 @@ public:
      * @brief Get the output vocabulary set
      * @return Set of output token IDs
      */
-    const VocabSet& get_output_vocab() const {
+    const VocabSet& get_output_vocab() const override {
         return output_vocab_;
     }
 
@@ -271,7 +283,7 @@ public:
      * @brief Get the input vocabulary set
      * @return Set of input vocabulary tokens
      */
-    const VocabSet& get_input_vocab() const {
+    const VocabSet& get_input_vocab() const override {
         return input_vocab_;
     }
 
@@ -279,7 +291,7 @@ public:
      * @brief Get the output vocabulary set
      * @return Set of output token IDs
      */
-    const VocabSet& get_output_vocab() const {
+    const VocabSet& get_output_vocab() const override {
         return output_vocab_;
     }
 
@@ -327,7 +339,7 @@ public:
      * @brief Get the input vocabulary set
      * @return Set of input vocabulary tokens
      */
-    const VocabSet& get_input_vocab() const {
+    const VocabSet& get_input_vocab() const override {
         return input_vocab_;
     }
 
@@ -335,7 +347,7 @@ public:
      * @brief Get the output vocabulary set
      * @return Set of output token IDs
      */
-    const VocabSet& get_output_vocab() const {
+    const VocabSet& get_output_vocab() const override {
         return output_vocab_;
     }
 
@@ -346,9 +358,69 @@ private:
     VocabSet output_vocab_;
 };
 
-// Other classes that could be implemented later:
-// class ComposedTokenizer : public Tokenizer {...};
+/**
+ * @brief ComposedTokenizer implementation
+ * Composes multiple tokenizers into a single pipeline
+ */
+class ComposedTokenizer : public Tokenizer {
+public:
+    /**
+     * @brief Construct a new ComposedTokenizer
+     * @param tokenizers Vector of tokenizers to compose
+     */
+    ComposedTokenizer(const std::vector<std::shared_ptr<Tokenizer>>& tokenizers);
 
-} // namespace bpe
+    /**
+     * @brief Learn from input data by passing it through each tokenizer in sequence
+     * @param tokens Input tokens to learn from
+     * @param input_vocab Optional set of input vocabulary tokens to consider
+     */
+    void learn(const TokenSequence& tokens, 
+               const std::optional<VocabSet>& input_vocab = std::nullopt) override;
+
+    /**
+     * @brief Encode input tokens by passing them through each tokenizer in sequence
+     * @param tokens Input tokens to encode
+     * @return Vector of encoded token IDs
+     */
+    TokenSequence encode(const TokenSequence& tokens) override;
+
+    /**
+     * @brief Decode tokens by passing them through each tokenizer in reverse sequence
+     * @param tokens Encoded tokens to decode
+     * @return Vector of decoded token IDs
+     */
+    TokenSequence decode(const TokenSequence& tokens) override;
+
+    /**
+     * @brief Get the input vocabulary set
+     * @return Set of input vocabulary tokens
+     */
+    const VocabSet& get_input_vocab() const override {
+        if (tokenizers_.empty()) {
+            static VocabSet empty;
+            return empty;
+        }
+        return tokenizers_.front()->get_input_vocab();
+    }
+
+    /**
+     * @brief Get the output vocabulary set
+     * @return Set of output token IDs
+     */
+    const VocabSet& get_output_vocab() const override {
+        if (tokenizers_.empty()) {
+            static VocabSet empty;
+            return empty;
+        }
+        return tokenizers_.back()->get_output_vocab();
+    }
+
+private:
+    std::vector<std::shared_ptr<Tokenizer>> tokenizers_;
+};
+
+// namespace bpe
+}
 
 #endif // BPE_HPP 

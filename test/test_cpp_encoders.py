@@ -52,7 +52,7 @@ def test_contextual_encoder():
     text = "aaabdaaabac"
     tokens = ensure_list(text)
     
-    # Create ContextualEncoder (this is a stub implementation for now)
+    # Create ContextualEncoder
     encoder = ContextualEncoder()
     
     # Learn, encode, and decode
@@ -61,7 +61,7 @@ def test_contextual_encoder():
     decoded = encoder.decode(encoded)
     
     # Convert to string for comparison
-    decoded_str = bytes(decoded).decode('utf-8') if decoded else ""
+    decoded_str = bytes(decoded).decode('utf-8')
     
     # Print debug info
     print("Original:", text)
@@ -69,8 +69,8 @@ def test_contextual_encoder():
     print("Decoded tokens:", decoded)
     print("Decoded string:", decoded_str)
     
-    # Verify the stub implementation still works (even if it doesn't compress yet)
-    assert len(decoded) == 0  # For the stub that returns empty lists
+    # Verify the decoded result matches the original input
+    assert decoded_str == text
 
 
 if __name__ == "__main__":

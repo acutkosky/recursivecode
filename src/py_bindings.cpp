@@ -255,5 +255,7 @@ NB_MODULE(contok, m) {
              "max_output_vocab"_a = std::nullopt, "max_merges"_a = std::nullopt)
         .def("learn", &bpe_bindings::learn_wrapper, "tokens"_a, "input_vocab"_a = nb::none())
         .def("encode", &bpe_bindings::encode_wrapper, "tokens"_a)
-        .def("decode", &bpe_bindings::decode_wrapper, "tokens"_a);
+        .def("decode", &bpe_bindings::decode_wrapper, "tokens"_a)
+        .def_prop_ro("output_vocab", &bpe::BPE::get_output_vocab)
+        .def_prop_ro("input_vocab", &bpe::BPE::get_input_vocab);
 } 

@@ -26,6 +26,24 @@ struct TokenPairHash {
     }
 };
 
+// Hash function for TokenTuple (vector<int>) to use in unordered_map
+struct TokenTupleHash {
+    std::size_t operator()(const TokenTuple& tuple) const {
+        std::size_t seed = tuple.size();
+        for (const auto& i : tuple) {
+            seed ^= std::hash<TokenType>()(i) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+        }
+        return seed;
+    }
+};
+
+// Equals function for TokenTuple
+struct TokenTupleEquals {
+    bool operator()(const TokenTuple& lhs, const TokenTuple& rhs) const {
+        return lhs == rhs;
+    }
+};
+
 // Utility functions
 /**
  * @brief Check if a sequence starts with a given prefix
@@ -97,7 +115,7 @@ TokenSequence merge_pairs(const TokenSequence& tokens, const TokenPair& pair, To
 class BPE : public Tokenizer {
 public:
     /**
-     * @brief Construct a new BPE tokenizer
+     * @brief Construct a new BPE tokenizer with all parameters
      * @param merges Optional list of token pairs that have been merged during training
      * @param token_values Optional map of token IDs to their corresponding values
      * @param input_vocab Optional map of input token IDs to their corresponding values
@@ -109,6 +127,13 @@ public:
         const std::unordered_map<TokenType, TokenType>& input_vocab = {},
         std::optional<int> max_output_vocab = std::nullopt,
         std::optional<int> max_merges = std::nullopt);
+
+    /**
+     * @brief Construct a new BPE tokenizer with only vocabulary constraints
+     * @param max_output_vocab Optional maximum size of the output vocabulary
+     * @param max_merges Optional maximum number of merges to perform
+     */
+    BPE(std::optional<int> max_output_vocab, std::optional<int> max_merges);
 
     /**
      * @brief Learn a BPE tokenizer from input tokens
@@ -133,10 +158,18 @@ public:
      */
     TokenSequence decode(const TokenSequence& tokens) override;
 
+    /**
+     * @brief Get the token values map (for debugging)
+     * @return Map of token IDs to their corresponding values
+     */
+    const std::unordered_map<TokenType, TokenTuple>& get_token_values() const {
+        return token_values_;
+    }
+
 private:
     std::vector<TokenPair> merges_;
     std::unordered_map<TokenType, TokenTuple> token_values_;
-    std::unordered_map<TokenType, TokenType> input_vocab_;
+    VocabSet input_vocab_;  // Changed from std::unordered_map<TokenType, TokenType> to VocabSet
     VocabSet output_vocab_;
     std::optional<int> max_output_vocab_;
     std::optional<int> max_merges_;

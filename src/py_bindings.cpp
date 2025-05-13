@@ -96,24 +96,27 @@ std::tuple<TokenTuple, TokenType> encode_one_token_wrapper_hierarchical(Hierarch
 }
 
 /**
- * Define a Python module named 'hlz' that provides the same API as the original 'lz.py'
+ * Define a Python module named 'contok' that provides the same API as the original 'lz.py'
  * This module should be a drop-in replacement for the Python module.
  */
-NB_MODULE(hlz, m) {
+NB_MODULE(contok, m) {
+    // Create the lz submodule
+    auto lz = m.def_submodule("lz", "LZ compression implementation");
+    
     // Module docstring
-    m.doc() = "C++ implementation of LZ compression with Python bindings";
+    lz.doc() = "C++ implementation of LZ compression with Python bindings";
 
     // Export constants
-    m.attr("UNKNOWN_SYMBOL") = lz::UNKNOWN_SYMBOL;
-    m.attr("EMPTY_TOKEN") = lz::EMPTY_TOKEN;
+    lz.attr("UNKNOWN_SYMBOL") = lz::UNKNOWN_SYMBOL;
+    lz.attr("EMPTY_TOKEN") = lz::EMPTY_TOKEN;
 
     // Export utility functions
-    m.def("get_set_element", &lz::get_set_element, "s"_a);
-    m.def("ensure_list", &convert_to_token_sequence, "to_encode"_a);
-    m.def("get_input_vocab", &convert_to_vocab_set, "to_encode"_a);
+    lz.def("get_set_element", &lz::get_set_element, "s"_a);
+    lz.def("ensure_list", &convert_to_token_sequence, "to_encode"_a);
+    lz.def("get_input_vocab", &convert_to_vocab_set, "to_encode"_a);
 
     // Define LZCoder class
-    nb::class_<lz::LZCoder>(m, "LZCoder")
+    nb::class_<lz::LZCoder>(lz, "LZCoder")
         .def(nb::init<int, lz::VocabSet>(), "output_vocab_size"_a = -1, "input_vocab"_a = lz::VocabSet())
         .def("update_vocab", &update_vocab_wrapper, "to_encode"_a)
         .def("encode", &encode_wrapper, "to_encode"_a, "learn"_a = true)
@@ -123,7 +126,7 @@ NB_MODULE(hlz, m) {
         .def("get_encoded_vocab", &lz::LZCoder::get_encoded_vocab);
 
     // Define HierarchicalLZCoder class
-    nb::class_<lz::HierarchicalLZCoder>(m, "HierarchicalLZCoder")
+    nb::class_<lz::HierarchicalLZCoder>(lz, "HierarchicalLZCoder")
         .def(nb::init<int, lz::VocabSet>(), "output_vocab_size"_a = -1, "input_vocab"_a = lz::VocabSet())
         .def("update_vocab", &update_vocab_wrapper_hierarchical, "to_encode"_a)
         .def("encode", &encode_wrapper_hierarchical, "to_encode"_a, "learn"_a = true)

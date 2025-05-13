@@ -9,7 +9,7 @@ wheel.packages = ["src"]
 wheel.expand-macos-universal-tags = true
 
 [project]
-name = "hlz"
+name = "contok"
 version = "0.1.0"
 description = "Hierarchical LZ compression implementation with Python bindings"
 authors = [

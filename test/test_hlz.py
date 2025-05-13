@@ -3,11 +3,11 @@ import math
 import importlib.util
 
 # Check if the C++ module is available
-if importlib.util.find_spec("hlz") is None:
-    pytest.skip("hlz module not found. Skipping C++ implementation tests.", allow_module_level=True)
+if importlib.util.find_spec("contok") is None:
+    pytest.skip("contok module not found. Skipping C++ implementation tests.", allow_module_level=True)
 
 # Import directly from the C++ implementation
-from hlz import LZCoder, HierarchicalLZCoder, ensure_list, EMPTY_TOKEN
+from contok.lz import LZCoder, HierarchicalLZCoder, ensure_list, EMPTY_TOKEN
 
 # Apply pytest marker
 pytestmark = pytest.mark.cpp

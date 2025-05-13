@@ -6,11 +6,11 @@ import importlib.util
 from src.lz import LZCoder as PyLZCoder, HierarchicalLZCoder as PyHierarchicalLZCoder, ensure_list as py_ensure_list, EMPTY_TOKEN as PY_EMPTY_TOKEN
 
 # Check if the C++ module is available
-if importlib.util.find_spec("hlz") is None:
-    pytest.skip("hlz module not found. Skipping comparison tests.", allow_module_level=True)
+if importlib.util.find_spec("contok") is None:
+    pytest.skip("contok module not found. Skipping comparison tests.", allow_module_level=True)
 
 # Import C++ implementation
-from hlz import LZCoder as CppLZCoder, HierarchicalLZCoder as CppHierarchicalLZCoder, ensure_list as cpp_ensure_list, EMPTY_TOKEN as CPP_EMPTY_TOKEN
+from contok.lz import LZCoder as CppLZCoder, HierarchicalLZCoder as CppHierarchicalLZCoder, ensure_list as cpp_ensure_list, EMPTY_TOKEN as CPP_EMPTY_TOKEN
 
 def test_ensure_list_equivalence():
     """Test that ensure_list behaves the same in both implementations"""

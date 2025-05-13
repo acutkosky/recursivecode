@@ -271,4 +271,132 @@ TokenSequence BPE::decode(const TokenSequence& tokens) {
     return decoded;
 }
 
+// Helper functions for ContextualEncoder
+
+/**
+ * Calculate statistics about token sequences in different contexts
+ */
+std::unordered_map<TokenType, std::unordered_map<TokenType, std::unordered_map<TokenTuple, int, TokenTupleHash, TokenTupleEquals>>> 
+get_context_stats(const TokenSequence& tokens, const VocabSet& vocab) {
+    // Stub implementation
+    return {};
+}
+
+/**
+ * Learn a contextual tokenizer from input tokens
+ */
+std::unordered_map<TokenType, std::unordered_map<TokenType, TokenTuple>> 
+learn_contextual_tokenizer(const TokenSequence& tokens, const std::optional<VocabSet>& vocab) {
+    // Stub implementation
+    return {};
+}
+
+/**
+ * Encode tokens using a contextual tokenizer
+ */
+TokenSequence contextual_encode(
+    const TokenSequence& tokens, 
+    const std::unordered_map<TokenType, std::unordered_map<TokenType, TokenTuple>>& contextual_tokens) {
+    // Stub implementation
+    return {};
+}
+
+/**
+ * Decode contextually encoded tokens back to their original form
+ */
+TokenSequence contextual_decode(
+    const TokenSequence& tokens, 
+    const std::unordered_map<TokenType, std::unordered_map<TokenType, TokenTuple>>& contextual_tokens,
+    TokenType initial_context) {
+    // Stub implementation
+    return {};
+}
+
+// ContextualEncoder implementation
+ContextualEncoder::ContextualEncoder(std::optional<int> max_token_value)
+    : max_token_value_(max_token_value) {
+}
+
+void ContextualEncoder::learn(const TokenSequence& tokens, 
+                         const std::optional<VocabSet>& input_vocab) {
+    // Stub implementation that will be filled in later
+    context_map_ = learn_contextual_tokenizer(tokens, input_vocab);
+    input_vocab_ = VocabSet();
+    output_vocab_ = VocabSet();
+    
+    // Update input and output vocabularies
+    for (const auto& [context, _] : context_map_) {
+        input_vocab_.insert(context);
+        output_vocab_.insert(context);
+    }
+}
+
+TokenSequence ContextualEncoder::encode(const TokenSequence& tokens) {
+    // Stub implementation that will be filled in later
+    return contextual_encode(tokens, context_map_);
+}
+
+TokenSequence ContextualEncoder::decode(const TokenSequence& tokens) {
+    // Stub implementation that will be filled in later
+    return contextual_decode(tokens, context_map_);
+}
+
+// DefragEncoder implementation
+DefragEncoder::DefragEncoder() {
+    // Initialize with empty mappings
+}
+
+void DefragEncoder::learn(const TokenSequence& tokens, 
+                          const std::optional<VocabSet>& input_vocab) {
+    // Determine input vocabulary
+    if (input_vocab.has_value()) {
+        input_vocab_ = input_vocab.value();
+    } else {
+        input_vocab_ = VocabSet(tokens.begin(), tokens.end());
+    }
+    
+    // Create continuous range of integers for output vocabulary
+    output_vocab_.clear();
+    for (TokenType i = 1; i <= input_vocab_.size(); ++i) {
+        output_vocab_.insert(i);
+    }
+    
+    // Create mappings
+    vocab_to_token_.clear();
+    token_to_vocab_.clear();
+    
+    TokenType idx = 1;
+    for (const auto& token : input_vocab_) {
+        vocab_to_token_[token] = idx;
+        token_to_vocab_[idx] = token;
+        ++idx;
+    }
+}
+
+TokenSequence DefragEncoder::encode(const TokenSequence& tokens) {
+    // Map input tokens to continuous range
+    TokenSequence encoded;
+    encoded.reserve(tokens.size());
+    
+    for (const auto& token : tokens) {
+        encoded.push_back(vocab_to_token_[token]);
+    }
+    
+    return encoded;
+}
+
+TokenSequence DefragEncoder::decode(const TokenSequence& tokens) {
+    // Map continuous range back to original tokens
+    TokenSequence decoded;
+    decoded.reserve(tokens.size());
+    
+    for (const auto& token : tokens) {
+        decoded.push_back(token_to_vocab_[token]);
+    }
+    
+    return decoded;
+}
+
+// Helper functions for ContextualEncoder
+
 } // namespace bpe 

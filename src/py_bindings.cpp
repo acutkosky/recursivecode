@@ -258,4 +258,22 @@ NB_MODULE(contok, m) {
         .def("decode", &bpe_bindings::decode_wrapper, "tokens"_a)
         .def_prop_ro("output_vocab", &bpe::BPE::get_output_vocab)
         .def_prop_ro("input_vocab", &bpe::BPE::get_input_vocab);
+        
+    // Define DefragEncoder class
+    nb::class_<bpe::DefragEncoder>(bpe_submodule, "DefragEncoder")
+        .def(nb::init<>())
+        .def("learn", &bpe::DefragEncoder::learn, "tokens"_a, "input_vocab"_a = nb::none())
+        .def("encode", static_cast<bpe::TokenSequence (bpe::DefragEncoder::*)(const bpe::TokenSequence&)>(&bpe::DefragEncoder::encode), "tokens"_a)
+        .def("decode", static_cast<bpe::TokenSequence (bpe::DefragEncoder::*)(const bpe::TokenSequence&)>(&bpe::DefragEncoder::decode), "tokens"_a)
+        .def_prop_ro("output_vocab", &bpe::DefragEncoder::get_output_vocab)
+        .def_prop_ro("input_vocab", &bpe::DefragEncoder::get_input_vocab);
+        
+    // Define ContextualEncoder class
+    nb::class_<bpe::ContextualEncoder>(bpe_submodule, "ContextualEncoder")
+        .def(nb::init<std::optional<int>>(), "max_token_value"_a = nb::none())
+        .def("learn", &bpe::ContextualEncoder::learn, "tokens"_a, "input_vocab"_a = nb::none())
+        .def("encode", static_cast<bpe::TokenSequence (bpe::ContextualEncoder::*)(const bpe::TokenSequence&)>(&bpe::ContextualEncoder::encode), "tokens"_a)
+        .def("decode", static_cast<bpe::TokenSequence (bpe::ContextualEncoder::*)(const bpe::TokenSequence&)>(&bpe::ContextualEncoder::decode), "tokens"_a)
+        .def_prop_ro("output_vocab", &bpe::ContextualEncoder::get_output_vocab)
+        .def_prop_ro("input_vocab", &bpe::ContextualEncoder::get_input_vocab);
 } 

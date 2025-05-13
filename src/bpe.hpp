@@ -93,6 +93,7 @@ public:
     virtual TokenSequence decode(const TokenSequence& tokens) = 0;
 };
 
+// BPE utility functions
 /**
  * @brief Calculate frequency statistics of adjacent token pairs in the input sequence
  * @param tokens Vector of token IDs to analyze
@@ -108,6 +109,47 @@ std::unordered_map<TokenPair, int, TokenPairHash> get_stats(const TokenSequence&
  * @return New vector of tokens with all occurrences of the pair merged
  */
 TokenSequence merge_pairs(const TokenSequence& tokens, const TokenPair& pair, TokenType new_token);
+
+// ContextualEncoder utility functions
+/**
+ * @brief Calculate statistics about token sequences in different contexts
+ * @param tokens Vector of token IDs to analyze
+ * @param vocab Set of vocabulary tokens to consider
+ * @return Nested map of context -> token -> substring -> count
+ */
+std::unordered_map<TokenType, std::unordered_map<TokenType, std::unordered_map<TokenTuple, int, TokenTupleHash, TokenTupleEquals>>> 
+get_context_stats(const TokenSequence& tokens, const VocabSet& vocab);
+
+/**
+ * @brief Learn a contextual tokenizer from input tokens
+ * @param tokens Vector of token IDs to learn from
+ * @param vocab Optional set of vocabulary tokens to consider
+ * @return Map of context tokens to their contextual token mappings
+ */
+std::unordered_map<TokenType, std::unordered_map<TokenType, TokenTuple>> 
+learn_contextual_tokenizer(const TokenSequence& tokens, const std::optional<VocabSet>& vocab = std::nullopt);
+
+/**
+ * @brief Encode tokens using a contextual tokenizer
+ * @param tokens Vector of token IDs to encode
+ * @param contextual_tokens Map of context tokens to their contextual token mappings
+ * @return Vector of contextually encoded token IDs
+ */
+TokenSequence contextual_encode(
+    const TokenSequence& tokens, 
+    const std::unordered_map<TokenType, std::unordered_map<TokenType, TokenTuple>>& contextual_tokens);
+
+/**
+ * @brief Decode contextually encoded tokens back to their original form
+ * @param tokens Vector of contextually encoded token IDs
+ * @param contextual_tokens Map of context tokens to their contextual token mappings
+ * @param initial_context Initial context token ID
+ * @return Vector of decoded original token IDs
+ */
+TokenSequence contextual_decode(
+    const TokenSequence& tokens, 
+    const std::unordered_map<TokenType, std::unordered_map<TokenType, TokenTuple>>& contextual_tokens,
+    TokenType initial_context = 0);
 
 /**
  * @brief BPE tokenizer implementation
@@ -166,6 +208,22 @@ public:
         return token_values_;
     }
 
+    /**
+     * @brief Get the input vocabulary set
+     * @return Set of input vocabulary tokens
+     */
+    const VocabSet& get_input_vocab() const {
+        return input_vocab_;
+    }
+
+    /**
+     * @brief Get the output vocabulary set
+     * @return Set of output token IDs
+     */
+    const VocabSet& get_output_vocab() const {
+        return output_vocab_;
+    }
+
 private:
     std::vector<TokenPair> merges_;
     std::unordered_map<TokenType, TokenTuple> token_values_;
@@ -175,9 +233,120 @@ private:
     std::optional<int> max_merges_;
 };
 
+/**
+ * @brief ContextualEncoder implementation
+ * Encodes tokens based on their context in the sequence
+ */
+class ContextualEncoder : public Tokenizer {
+public:
+    /**
+     * @brief Construct a new ContextualEncoder
+     * @param max_token_value Optional maximum token value to use
+     */
+    ContextualEncoder(std::optional<int> max_token_value = std::nullopt);
+
+    /**
+     * @brief Learn contextual encoding patterns from input data
+     * @param tokens Input tokens to learn from
+     * @param input_vocab Optional set of input vocabulary tokens to consider
+     */
+    void learn(const TokenSequence& tokens, 
+               const std::optional<VocabSet>& input_vocab = std::nullopt) override;
+
+    /**
+     * @brief Encode input tokens using contextual information
+     * @param tokens Input tokens to encode
+     * @return Vector of encoded token IDs
+     */
+    TokenSequence encode(const TokenSequence& tokens) override;
+
+    /**
+     * @brief Decode contextually encoded tokens back to their original form
+     * @param tokens Encoded tokens to decode
+     * @return Vector of decoded token IDs
+     */
+    TokenSequence decode(const TokenSequence& tokens) override;
+
+    /**
+     * @brief Get the input vocabulary set
+     * @return Set of input vocabulary tokens
+     */
+    const VocabSet& get_input_vocab() const {
+        return input_vocab_;
+    }
+
+    /**
+     * @brief Get the output vocabulary set
+     * @return Set of output token IDs
+     */
+    const VocabSet& get_output_vocab() const {
+        return output_vocab_;
+    }
+
+private:
+    VocabSet input_vocab_;
+    VocabSet output_vocab_;
+    std::unordered_map<TokenType, std::unordered_map<TokenType, TokenTuple>> context_map_;
+    std::optional<int> max_token_value_;
+};
+
+/**
+ * @brief DefragEncoder implementation
+ * Maps input vocabulary tokens to a continuous range of integers
+ */
+class DefragEncoder : public Tokenizer {
+public:
+    /**
+     * @brief Construct a new DefragEncoder
+     */
+    DefragEncoder();
+
+    /**
+     * @brief Learn vocabulary mapping from input data
+     * @param tokens Input tokens to learn from
+     * @param input_vocab Optional set of input vocabulary tokens to consider
+     */
+    void learn(const TokenSequence& tokens, 
+               const std::optional<VocabSet>& input_vocab = std::nullopt) override;
+
+    /**
+     * @brief Encode input tokens using the learned vocabulary mapping
+     * @param tokens Input tokens to encode
+     * @return Vector of encoded token IDs in the range [1, len(vocab)]
+     */
+    TokenSequence encode(const TokenSequence& tokens) override;
+
+    /**
+     * @brief Decode encoded tokens back to their original vocabulary tokens
+     * @param tokens Encoded tokens to decode
+     * @return Vector of decoded original tokens
+     */
+    TokenSequence decode(const TokenSequence& tokens) override;
+
+    /**
+     * @brief Get the input vocabulary set
+     * @return Set of input vocabulary tokens
+     */
+    const VocabSet& get_input_vocab() const {
+        return input_vocab_;
+    }
+
+    /**
+     * @brief Get the output vocabulary set
+     * @return Set of output token IDs
+     */
+    const VocabSet& get_output_vocab() const {
+        return output_vocab_;
+    }
+
+private:
+    std::unordered_map<TokenType, TokenType> vocab_to_token_;
+    std::unordered_map<TokenType, TokenType> token_to_vocab_;
+    VocabSet input_vocab_;
+    VocabSet output_vocab_;
+};
+
 // Other classes that could be implemented later:
-// class DefragEncoder : public Tokenizer {...};
-// class ContextualEncoder : public Tokenizer {...};
 // class ComposedTokenizer : public Tokenizer {...};
 
 } // namespace bpe

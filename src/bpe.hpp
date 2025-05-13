@@ -74,9 +74,11 @@ public:
      * @brief Learn tokenization patterns from input data
      * @param tokens Input tokens to learn from
      * @param input_vocab Optional set of input vocabulary tokens to consider
+     * @param debug Whether to print debug information during learning
      */
     virtual void learn(const TokenSequence& tokens, 
-                       const std::optional<VocabSet>& input_vocab = std::nullopt) = 0;
+                       const std::optional<VocabSet>& input_vocab = std::nullopt,
+                       bool debug = false) = 0;
 
     /**
      * @brief Encode input tokens into a new token representation
@@ -193,10 +195,12 @@ public:
      * @brief Learn a BPE tokenizer from input tokens
      * @param tokens Input tokens as vector of integers
      * @param input_vocab Optional set of input vocabulary tokens
+     * @param debug Whether to print debug information during learning
      * @return Vector of tokenized input
      */
     void learn(const TokenSequence& tokens, 
-               const std::optional<VocabSet>& input_vocab = std::nullopt) override;
+               const std::optional<VocabSet>& input_vocab = std::nullopt,
+               bool debug = false) override;
 
     /**
      * @brief Encode input tokens using a trained BPE tokenizer
@@ -261,9 +265,11 @@ public:
      * @brief Learn contextual encoding patterns from input data
      * @param tokens Input tokens to learn from
      * @param input_vocab Optional set of input vocabulary tokens to consider
+     * @param debug Whether to print debug information during learning
      */
     void learn(const TokenSequence& tokens, 
-               const std::optional<VocabSet>& input_vocab = std::nullopt) override;
+               const std::optional<VocabSet>& input_vocab = std::nullopt,
+               bool debug = false) override;
 
     /**
      * @brief Encode input tokens using contextual information
@@ -317,9 +323,11 @@ public:
      * @brief Learn vocabulary mapping from input data
      * @param tokens Input tokens to learn from
      * @param input_vocab Optional set of input vocabulary tokens to consider
+     * @param debug Whether to print debug information during learning
      */
     void learn(const TokenSequence& tokens, 
-               const std::optional<VocabSet>& input_vocab = std::nullopt) override;
+               const std::optional<VocabSet>& input_vocab = std::nullopt,
+               bool debug = false) override;
 
     /**
      * @brief Encode input tokens using the learned vocabulary mapping
@@ -374,9 +382,11 @@ public:
      * @brief Learn from input data by passing it through each tokenizer in sequence
      * @param tokens Input tokens to learn from
      * @param input_vocab Optional set of input vocabulary tokens to consider
+     * @param debug Whether to print debug information during learning
      */
     void learn(const TokenSequence& tokens, 
-               const std::optional<VocabSet>& input_vocab = std::nullopt) override;
+               const std::optional<VocabSet>& input_vocab = std::nullopt,
+               bool debug = false) override;
 
     /**
      * @brief Encode input tokens by passing them through each tokenizer in sequence

@@ -175,7 +175,17 @@ TokenSequence learn_wrapper(BPE& self, const nb::object& tokens, const nb::objec
     TokenSequence tokens_seq = convert_to_token_sequence(tokens);
     std::optional<VocabSet> vocab_opt = convert_to_vocab_set_optional(input_vocab);
     
-    self.learn(tokens_seq, vocab_opt);
+    self.learn(tokens_seq, vocab_opt, false); // default to debug=false
+    
+    // Return the encoded tokens as a result
+    return self.encode(tokens_seq);
+}
+
+TokenSequence learn_wrapper_debug(BPE& self, const nb::object& tokens, const nb::object& input_vocab = nb::none(), bool debug = true) {
+    TokenSequence tokens_seq = convert_to_token_sequence(tokens);
+    std::optional<VocabSet> vocab_opt = convert_to_vocab_set_optional(input_vocab);
+    
+    self.learn(tokens_seq, vocab_opt, debug);
     
     // Return the encoded tokens as a result
     return self.encode(tokens_seq);
@@ -187,6 +197,54 @@ TokenSequence encode_wrapper(BPE& self, const nb::object& tokens) {
 
 TokenSequence decode_wrapper(BPE& self, const nb::object& tokens) {
     return self.decode(convert_to_token_sequence(tokens));
+}
+
+// Wrapper for DefragEncoder
+void learn_defrag_wrapper(DefragEncoder& self, const nb::object& tokens, const nb::object& input_vocab = nb::none()) {
+    TokenSequence tokens_seq = convert_to_token_sequence(tokens);
+    std::optional<VocabSet> vocab_opt = convert_to_vocab_set_optional(input_vocab);
+    
+    self.learn(tokens_seq, vocab_opt, false); // default to debug=false
+}
+
+// Wrapper for DefragEncoder with debug
+void learn_defrag_wrapper_debug(DefragEncoder& self, const nb::object& tokens, const nb::object& input_vocab = nb::none(), bool debug = true) {
+    TokenSequence tokens_seq = convert_to_token_sequence(tokens);
+    std::optional<VocabSet> vocab_opt = convert_to_vocab_set_optional(input_vocab);
+    
+    self.learn(tokens_seq, vocab_opt, debug);
+}
+
+// Wrapper for ContextualEncoder
+void learn_contextual_wrapper(ContextualEncoder& self, const nb::object& tokens, const nb::object& input_vocab = nb::none()) {
+    TokenSequence tokens_seq = convert_to_token_sequence(tokens);
+    std::optional<VocabSet> vocab_opt = convert_to_vocab_set_optional(input_vocab);
+    
+    self.learn(tokens_seq, vocab_opt, false); // default to debug=false
+}
+
+// Wrapper for ContextualEncoder with debug
+void learn_contextual_wrapper_debug(ContextualEncoder& self, const nb::object& tokens, const nb::object& input_vocab = nb::none(), bool debug = true) {
+    TokenSequence tokens_seq = convert_to_token_sequence(tokens);
+    std::optional<VocabSet> vocab_opt = convert_to_vocab_set_optional(input_vocab);
+    
+    self.learn(tokens_seq, vocab_opt, debug);
+}
+
+// Wrapper for ComposedTokenizer
+void learn_composed_wrapper(ComposedTokenizer& self, const nb::object& tokens, const nb::object& input_vocab = nb::none()) {
+    TokenSequence tokens_seq = convert_to_token_sequence(tokens);
+    std::optional<VocabSet> vocab_opt = convert_to_vocab_set_optional(input_vocab);
+    
+    self.learn(tokens_seq, vocab_opt, false); // default to debug=false
+}
+
+// Wrapper for ComposedTokenizer with debug
+void learn_composed_wrapper_debug(ComposedTokenizer& self, const nb::object& tokens, const nb::object& input_vocab = nb::none(), bool debug = true) {
+    TokenSequence tokens_seq = convert_to_token_sequence(tokens);
+    std::optional<VocabSet> vocab_opt = convert_to_vocab_set_optional(input_vocab);
+    
+    self.learn(tokens_seq, vocab_opt, debug);
 }
 
 } // namespace bpe_bindings
@@ -254,6 +312,7 @@ NB_MODULE(contok, m) {
         .def(nb::init<std::optional<int>, std::optional<int>>(),
              "max_output_vocab"_a = std::nullopt, "max_merges"_a = std::nullopt)
         .def("learn", &bpe_bindings::learn_wrapper, "tokens"_a, "input_vocab"_a = nb::none())
+        .def("learn_debug", &bpe_bindings::learn_wrapper_debug, "tokens"_a, "input_vocab"_a = nb::none(), "debug"_a = true)
         .def("encode", &bpe_bindings::encode_wrapper, "tokens"_a)
         .def("decode", &bpe_bindings::decode_wrapper, "tokens"_a)
         .def_prop_ro("output_vocab", &bpe::BPE::get_output_vocab)
@@ -262,7 +321,8 @@ NB_MODULE(contok, m) {
     // Define DefragEncoder class
     nb::class_<bpe::DefragEncoder>(bpe_submodule, "DefragEncoder")
         .def(nb::init<>())
-        .def("learn", &bpe::DefragEncoder::learn, "tokens"_a, "input_vocab"_a = nb::none())
+        .def("learn", &bpe_bindings::learn_defrag_wrapper, "tokens"_a, "input_vocab"_a = nb::none())
+        .def("learn_debug", &bpe_bindings::learn_defrag_wrapper_debug, "tokens"_a, "input_vocab"_a = nb::none(), "debug"_a = true)
         .def("encode", static_cast<bpe::TokenSequence (bpe::DefragEncoder::*)(const bpe::TokenSequence&)>(&bpe::DefragEncoder::encode), "tokens"_a)
         .def("decode", static_cast<bpe::TokenSequence (bpe::DefragEncoder::*)(const bpe::TokenSequence&)>(&bpe::DefragEncoder::decode), "tokens"_a)
         .def_prop_ro("output_vocab", &bpe::DefragEncoder::get_output_vocab)
@@ -271,7 +331,8 @@ NB_MODULE(contok, m) {
     // Define ContextualEncoder class
     nb::class_<bpe::ContextualEncoder>(bpe_submodule, "ContextualEncoder")
         .def(nb::init<std::optional<int>>(), "max_token_value"_a = nb::none())
-        .def("learn", &bpe::ContextualEncoder::learn, "tokens"_a, "input_vocab"_a = nb::none())
+        .def("learn", &bpe_bindings::learn_contextual_wrapper, "tokens"_a, "input_vocab"_a = nb::none())
+        .def("learn_debug", &bpe_bindings::learn_contextual_wrapper_debug, "tokens"_a, "input_vocab"_a = nb::none(), "debug"_a = true)
         .def("encode", static_cast<bpe::TokenSequence (bpe::ContextualEncoder::*)(const bpe::TokenSequence&)>(&bpe::ContextualEncoder::encode), "tokens"_a)
         .def("decode", static_cast<bpe::TokenSequence (bpe::ContextualEncoder::*)(const bpe::TokenSequence&)>(&bpe::ContextualEncoder::decode), "tokens"_a)
         .def_prop_ro("output_vocab", &bpe::ContextualEncoder::get_output_vocab)
@@ -304,7 +365,8 @@ NB_MODULE(contok, m) {
             
             new (self) bpe::ComposedTokenizer(tokenizer_ptrs);
         }, "tokenizers"_a)
-        .def("learn", &bpe::ComposedTokenizer::learn, "tokens"_a, "input_vocab"_a = nb::none())
+        .def("learn", &bpe_bindings::learn_composed_wrapper, "tokens"_a, "input_vocab"_a = nb::none())
+        .def("learn_debug", &bpe_bindings::learn_composed_wrapper_debug, "tokens"_a, "input_vocab"_a = nb::none(), "debug"_a = true)
         .def("encode", static_cast<bpe::TokenSequence (bpe::ComposedTokenizer::*)(const bpe::TokenSequence&)>(&bpe::ComposedTokenizer::encode), "tokens"_a)
         .def("decode", static_cast<bpe::TokenSequence (bpe::ComposedTokenizer::*)(const bpe::TokenSequence&)>(&bpe::ComposedTokenizer::decode), "tokens"_a)
         .def_prop_ro("output_vocab", &bpe::ComposedTokenizer::get_output_vocab)

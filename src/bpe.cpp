@@ -108,13 +108,18 @@ BPE::BPE(std::optional<int> max_output_vocab, std::optional<int> max_merges)
 }
 
 void BPE::learn(const TokenSequence& tokens, 
-                const std::optional<VocabSet>& input_vocab) {
+                const std::optional<VocabSet>& input_vocab,
+                bool debug) {
     // Initialize input vocabulary if not provided
     VocabSet vocab;
     if (input_vocab.has_value()) {
         vocab = input_vocab.value();
     } else {
         vocab = VocabSet(tokens.begin(), tokens.end());
+    }
+    
+    if (debug) {
+        std::cout << "BPE::learn - Starting learning with vocabulary size: " << vocab.size() << std::endl;
     }
     
     // Convert vocab to a list to fix order
@@ -131,6 +136,10 @@ void BPE::learn(const TokenSequence& tokens,
     for (TokenType token : vocab_list) {
         merges_.push_back({0, token});
         token_values_[token] = {token};
+    }
+    
+    if (debug) {
+        std::cout << "BPE::learn - Initialized " << merges_.size() << " initial merges" << std::endl;
     }
     
     // Set max_output_vocab if not specified
@@ -153,8 +162,16 @@ void BPE::learn(const TokenSequence& tokens,
         working_tokens.push_back(inverse_token_values[single_token]);
     }
     
+    if (debug) {
+        std::cout << "BPE::learn - Converted input tokens, ready for merging" << std::endl;
+    }
+    
     // If there are fewer than 2 tokens, we can't do any merges
     if (working_tokens.size() < 2) {
+        if (debug) {
+            std::cout << "BPE::learn - Too few tokens for merging, stopping" << std::endl;
+        }
+        
         // Update output vocabulary
         output_vocab_ = VocabSet();
         for (size_t i = 1; i <= merges_.size(); ++i) {
@@ -166,6 +183,13 @@ void BPE::learn(const TokenSequence& tokens,
     // Start with next_token as max input token value + 1
     TokenType next_token = *std::max_element(vocab_list.begin(), vocab_list.end()) + 1;
     
+    if (debug) {
+        std::cout << "BPE::learn - Starting merge process with target vocab size: " 
+                  << max_output_vocab_.value() << std::endl;
+    }
+    
+    int merge_count = 0;
+    
     // Continue merging until we reach the maximum output vocabulary size
     while (merges_.size() < max_output_vocab_.value()) {
         // Calculate pair frequencies
@@ -173,6 +197,9 @@ void BPE::learn(const TokenSequence& tokens,
         
         // If there are no pairs or all pairs occur only once, break
         if (stats.empty()) {
+            if (debug) {
+                std::cout << "BPE::learn - No more pairs to merge, stopping" << std::endl;
+            }
             break;
         }
         
@@ -184,6 +211,9 @@ void BPE::learn(const TokenSequence& tokens,
         
         // If the most frequent pair only occurs once, break
         if (most_frequent_pair->second == 1) {
+            if (debug) {
+                std::cout << "BPE::learn - Most frequent pair occurs only once, stopping" << std::endl;
+            }
             break;
         }
         
@@ -210,12 +240,26 @@ void BPE::learn(const TokenSequence& tokens,
         
         // Increment next token
         next_token++;
+        merge_count++;
+        
+        if (debug && merge_count % 100 == 0) {
+            std::cout << "BPE::learn - Completed " << merge_count << " merges" << std::endl;
+        }
+    }
+    
+    if (debug) {
+        std::cout << "BPE::learn - Finished learning with " << merge_count
+                  << " total merges and final vocabulary size: " << merges_.size() << std::endl;
     }
     
     // Update output vocabulary
     output_vocab_ = VocabSet();
     for (size_t i = 1; i <= merges_.size(); ++i) {
         output_vocab_.insert(static_cast<TokenType>(i));
+    }
+    
+    if (debug) {
+        std::cout << "BPE::learn - Final output vocabulary size: " << output_vocab_.size() << std::endl;
     }
     
     // // Debug output of token_values_
@@ -447,16 +491,31 @@ ContextualEncoder::ContextualEncoder(std::optional<int> max_token_value)
 }
 
 void ContextualEncoder::learn(const TokenSequence& tokens, 
-                         const std::optional<VocabSet>& input_vocab) {
-    // Stub implementation that will be filled in later
+                         const std::optional<VocabSet>& input_vocab,
+                         bool debug) {
+    if (debug) {
+        std::cout << "ContextualEncoder::learn - Starting learning" << std::endl;
+    }
+    
+    // Learn contextual tokenizer
     context_map_ = learn_contextual_tokenizer(tokens, input_vocab);
     input_vocab_ = VocabSet();
     output_vocab_ = VocabSet();
+    
+    if (debug) {
+        std::cout << "ContextualEncoder::learn - Created context map with " 
+                  << context_map_.size() << " contexts" << std::endl;
+    }
     
     // Update input and output vocabularies
     for (const auto& [context, _] : context_map_) {
         input_vocab_.insert(context);
         output_vocab_.insert(context);
+    }
+    
+    if (debug) {
+        std::cout << "ContextualEncoder::learn - Finished with vocabulary size: " 
+                  << output_vocab_.size() << std::endl;
     }
 }
 
@@ -476,12 +535,21 @@ DefragEncoder::DefragEncoder() {
 }
 
 void DefragEncoder::learn(const TokenSequence& tokens, 
-                          const std::optional<VocabSet>& input_vocab) {
+                          const std::optional<VocabSet>& input_vocab,
+                          bool debug) {
+    if (debug) {
+        std::cout << "DefragEncoder::learn - Starting learning" << std::endl;
+    }
+    
     // Determine input vocabulary
     if (input_vocab.has_value()) {
         input_vocab_ = input_vocab.value();
     } else {
         input_vocab_ = VocabSet(tokens.begin(), tokens.end());
+    }
+    
+    if (debug) {
+        std::cout << "DefragEncoder::learn - Input vocabulary size: " << input_vocab_.size() << std::endl;
     }
     
     // Create continuous range of integers for output vocabulary
@@ -499,6 +567,12 @@ void DefragEncoder::learn(const TokenSequence& tokens,
         vocab_to_token_[token] = idx;
         token_to_vocab_[idx] = token;
         ++idx;
+    }
+    
+    if (debug) {
+        std::cout << "DefragEncoder::learn - Created mappings for " 
+                  << vocab_to_token_.size() << " tokens" << std::endl;
+        std::cout << "DefragEncoder::learn - Output vocabulary size: " << output_vocab_.size() << std::endl;
     }
 }
 
@@ -533,22 +607,49 @@ ComposedTokenizer::ComposedTokenizer(const std::vector<std::shared_ptr<Tokenizer
 }
 
 void ComposedTokenizer::learn(const TokenSequence& tokens, 
-                             const std::optional<VocabSet>& input_vocab) {
+                             const std::optional<VocabSet>& input_vocab,
+                             bool debug) {
     if (tokenizers_.empty()) {
+        if (debug) {
+            std::cout << "ComposedTokenizer::learn - No tokenizers to learn with" << std::endl;
+        }
         return;
+    }
+    
+    if (debug) {
+        std::cout << "ComposedTokenizer::learn - Starting learning with " 
+                  << tokenizers_.size() << " tokenizers" << std::endl;
     }
     
     // Start with the input tokens
     TokenSequence current_tokens = tokens;
     
     // For the first tokenizer, use the provided input_vocab
-    tokenizers_[0]->learn(current_tokens, input_vocab);
+    if (debug) {
+        std::cout << "ComposedTokenizer::learn - Learning first tokenizer" << std::endl;
+    }
+    tokenizers_[0]->learn(current_tokens, input_vocab, debug);
     current_tokens = tokenizers_[0]->encode(current_tokens);
     
     // For the rest of the tokenizers, use no input_vocab constraints
     for (size_t i = 1; i < tokenizers_.size(); ++i) {
-        tokenizers_[i]->learn(current_tokens, std::nullopt);
+        if (debug) {
+            std::cout << "ComposedTokenizer::learn - Learning tokenizer " << i + 1 
+                      << " of " << tokenizers_.size() << std::endl;
+        }
+        tokenizers_[i]->learn(current_tokens, std::nullopt, debug);
         current_tokens = tokenizers_[i]->encode(current_tokens);
+    }
+    
+    if (debug) {
+        std::cout << "ComposedTokenizer::learn - Finished learning all tokenizers" << std::endl;
+        
+        if (!tokenizers_.empty()) {
+            std::cout << "ComposedTokenizer::learn - Final input vocabulary size: " 
+                      << tokenizers_.front()->get_input_vocab().size() << std::endl;
+            std::cout << "ComposedTokenizer::learn - Final output vocabulary size: " 
+                      << tokenizers_.back()->get_output_vocab().size() << std::endl;
+        }
     }
 }
 
